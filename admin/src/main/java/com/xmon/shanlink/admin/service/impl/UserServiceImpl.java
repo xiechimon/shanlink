@@ -9,13 +9,13 @@ import com.xmon.shanlink.admin.common.enums.UserErrorCodeEnum;
 import com.xmon.shanlink.admin.dao.entity.UserDO;
 import com.xmon.shanlink.admin.dao.mapper.UserMapper;
 import com.xmon.shanlink.admin.dto.req.UserRegisterReqDTO;
+import com.xmon.shanlink.admin.dto.req.UserUpdateReqDTO;
 import com.xmon.shanlink.admin.dto.resp.UserRespDTO;
 import com.xmon.shanlink.admin.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
-import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
@@ -40,9 +40,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             throw new ClientException(UserErrorCodeEnum.USER_NULL);
         }
 
-        UserRespDTO result = new UserRespDTO();
-        BeanUtils.copyProperties(userDO, result);
-        return result;
+        return BeanUtil.toBean(userDO, UserRespDTO.class);
     }
 
     @Override
@@ -68,5 +66,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         } finally {
             lock.unlock();
         }
+    }
+
+    @Override
+    public void update(UserUpdateReqDTO requestParam) {
+        LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
+                .eq(UserDO::getUsername, requestParam.getUsername());
+
+        update(BeanUtil.toBean(requestParam, UserDO.class), queryWrapper);
     }
 }

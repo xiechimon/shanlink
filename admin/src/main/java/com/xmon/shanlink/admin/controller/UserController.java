@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import com.xmon.shanlink.admin.common.convention.result.Result;
 import com.xmon.shanlink.admin.common.convention.result.Results;
 import com.xmon.shanlink.admin.dto.req.UserRegisterReqDTO;
+import com.xmon.shanlink.admin.dto.req.UserUpdateReqDTO;
 import com.xmon.shanlink.admin.dto.resp.UserActualRespDTO;
 import com.xmon.shanlink.admin.dto.resp.UserRespDTO;
 import com.xmon.shanlink.admin.service.UserService;
@@ -46,10 +47,21 @@ public class UserController {
         return Results.success(userService.checkUsername(username));
     }
 
-
+    /**
+     * 用户注册
+     */
     @PostMapping
     public Result<Void> register(@RequestBody UserRegisterReqDTO requestParam) {
         userService.register(requestParam);
+        return Results.success();
+    }
+
+    /**
+     * 用户更新
+     */
+    @PutMapping
+    public Result<Void> update(@RequestBody UserUpdateReqDTO requestParam) {
+        userService.update(requestParam);
         return Results.success();
     }
 }
