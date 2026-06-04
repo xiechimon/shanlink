@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan()
+@MapperScan("com.xmon.shanlink.admin.dao.mapper")
 public class ShanLinkAdminApplication {
 
     public static void main(String[] args) {
