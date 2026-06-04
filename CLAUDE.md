@@ -54,6 +54,8 @@ com.xmon.shanlink.admin
 - 主键：`@TableId(type = IdType.AUTO)`
 - **每个字段必须添加 Javadoc 注释**，注释内容取自 SQL 的 `COMMENT`
 - 字段类型：时间用 `Date`，删除标识用 `Integer`
+- 自动填充字段必须加 `@TableField(fill = FieldFill.INSERT)` 或 `@TableField(fill = FieldFill.INSERT_UPDATE)`，否则
+  `MetaObjectHandler` 不生效
 
 ```java
 
@@ -73,8 +75,21 @@ public class UserDO {
     private String username;
 
     /**
+     * 创建时间
+     */
+    @TableField(fill = FieldFill.INSERT)
+    private Date createTime;
+
+    /**
+     * 修改时间
+     */
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private Date updateTime;
+
+    /**
      * 删除标识 0：未删除 1：已删除
      */
+    @TableField(fill = FieldFill.INSERT)
     private Integer delFlag;
 }
 ```
@@ -153,6 +168,82 @@ private String phone;
 @JsonSerialize(using = IdCardDesensitizationSerializer.class)
 private String idCard;
 ```
+
+### 布隆过滤器
+
+`RBloomFilter` 注册为 Spring Bean，由 `ApplicationRunner` 负责初始化并加载存量数据：
+
+```java
+// config/RBloomFilterConfiguration.java
+@Bean
+public RBloomFilter<String> userRegisterCachePenetrationBloomFilter(RedissonClient redissonClient) {
+    return redissonClient.getBloomFilter("userRegisterCachePenetrationBloomFilter");
+}
+
+// ApplicationRunner 里调用 tryInit，返回 true 表示 BF 是新建的，需要从 DB 加载存量数据
+boolean isNew = bloomFilter.tryInit(100000000L, 0.001);
+if(isNew){
+        // 查库全量写入
+        }
+```
+
+- `tryInit` 若 Redis 中已存在该 BF 则返回 `false`，数据不会被清空
+- 注册成功后调用 `bloomFilter.add(username)` 同步写入
+- BF 只能减少查库，不能保证唯一性，**数据库必须加唯一索引兜底**
+
+### 注册安全
+
+用户名唯一性校验需双重保障：
+
+```java
+// 1. BF 前置拦截（减少查库）
+if(bloomFilter.contains(username)){
+        throw new
+
+ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
+}
+        // 2. 唯一索引兜底（防竞态条件）
+        try{
+
+save(userDO);
+}catch(
+DuplicateKeyException e){
+        throw new
+
+ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
+}
+```
+
+密码存储前必须加密，使用 Hutool 的 `DigestUtil.md5Hex(password)`。
+
+### Redis Key 命名规范
+
+- 用 `:` 分隔命名空间层级
+- 同一段内统一用 `-`，禁止混用 `_` 和 `-`
+- 格式：`shan-link:{业务}:{资源}:`
+
+```java
+// 正确
+"shan-link:lock:user-register:"
+        "shan-link:login:"
+
+        // 错误（混用 _ 和 -）
+        "shan-link:lock_user-register:"
+```
+
+### ShardingSphere
+
+使用 JDBC 模式，数据源配置在 `shardingsphere-config.yaml`，`application.yml` 只保留驱动声明：
+
+```yaml
+# application.yml
+spring:
+  datasource:
+    driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
+    url: jdbc:shardingsphere:classpath:shardingsphere-config.yaml
+```
+
+调试时在 `shardingsphere-config.yaml` 开启 `props.sql-show: true` 查看路由后的实际 SQL。
 
 ### API 路径规范
 
