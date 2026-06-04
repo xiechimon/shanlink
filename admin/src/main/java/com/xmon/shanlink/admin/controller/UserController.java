@@ -3,9 +3,11 @@ package com.xmon.shanlink.admin.controller;
 import cn.hutool.core.bean.BeanUtil;
 import com.xmon.shanlink.admin.common.convention.result.Result;
 import com.xmon.shanlink.admin.common.convention.result.Results;
+import com.xmon.shanlink.admin.dto.req.UserLoginReqDTO;
 import com.xmon.shanlink.admin.dto.req.UserRegisterReqDTO;
 import com.xmon.shanlink.admin.dto.req.UserUpdateReqDTO;
 import com.xmon.shanlink.admin.dto.resp.UserActualRespDTO;
+import com.xmon.shanlink.admin.dto.resp.UserLoginRespDTO;
 import com.xmon.shanlink.admin.dto.resp.UserRespDTO;
 import com.xmon.shanlink.admin.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -63,5 +65,13 @@ public class UserController {
     public Result<Void> update(@RequestBody UserUpdateReqDTO requestParam) {
         userService.update(requestParam);
         return Results.success();
+    }
+
+    /**
+     * 用户登陆
+     */
+    @PostMapping("/login")
+    public Result<UserLoginRespDTO> login(@RequestBody UserLoginReqDTO requestParam) {
+        return Results.success(userService.login(requestParam));
     }
 }

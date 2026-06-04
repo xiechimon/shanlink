@@ -2,8 +2,10 @@ package com.xmon.shanlink.admin.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xmon.shanlink.admin.dao.entity.UserDO;
+import com.xmon.shanlink.admin.dto.req.UserLoginReqDTO;
 import com.xmon.shanlink.admin.dto.req.UserRegisterReqDTO;
 import com.xmon.shanlink.admin.dto.req.UserUpdateReqDTO;
+import com.xmon.shanlink.admin.dto.resp.UserLoginRespDTO;
 import com.xmon.shanlink.admin.dto.resp.UserRespDTO;
 
 /**
@@ -40,4 +42,12 @@ public interface UserService extends IService<UserDO> {
      * @param requestParam 用户更新请求参数
      */
     void update(UserUpdateReqDTO requestParam);
+
+    /**
+     * 用户登录
+     *
+     * @param requestParam 用户登录请求参数
+     * @return 用户登录返回参数
+     */
+    UserLoginRespDTO login(UserLoginReqDTO requestParam);
 }
