@@ -120,4 +120,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         // 5. 返回 token
         return new UserLoginRespDTO(token);
     }
+
+    @Override
+    public Boolean checkLogin(String username, String token) {
+        String loginKey = USER_LOGIN_KEY + username;
+        return stringRedisTemplate.opsForHash().get(loginKey, token) != null;
+    }
+
+    @Override
+    public void logout(String username, String token) {
+        String loginKey = USER_LOGIN_KEY + username;
+        if (checkLogin(username, token)) {
+            stringRedisTemplate.delete(loginKey);
+            return;
+        }
+        throw new ClientException(UserErrorCodeEnum.USER_NOT_LOGIN);
+    }
 }

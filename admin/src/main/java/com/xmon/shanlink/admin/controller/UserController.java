@@ -74,4 +74,21 @@ public class UserController {
     public Result<UserLoginRespDTO> login(@RequestBody UserLoginReqDTO requestParam) {
         return Results.success(userService.login(requestParam));
     }
+
+    /**
+     * 检查用户是否登陆
+     */
+    @GetMapping("/check-login")
+    public Result<Boolean> checkLogin(@RequestParam String username, @RequestParam String token) {
+        return Results.success(userService.checkLogin(username, token));
+    }
+
+    /**
+     * 用户退出登录
+     */
+    @DeleteMapping("/logout")
+    public Result<Void> logout(@RequestParam String username, @RequestParam String token) {
+        userService.logout(username, token);
+        return Results.success();
+    }
 }
