@@ -19,6 +19,7 @@
 - **MyBatis-Plus** 3.5.15（Spring Boot 3 版）
 - **ShardingSphere** 5.3.2（分库分表）
 - **Redisson** 3.27.2（Redis 客户端）
+- **Fastjson2** 2.0.36（JSON 序列化，用于 Redis 存取对象）
 - **Dozer** 6.5.2（对象属性映射）
 - **Hutool** 5.8.27（工具库）
 - **Lombok**（全局依赖，无需子模块单独引入）
@@ -29,6 +30,7 @@
 ```
 com.xmon.shanlink.admin
 ├── common
+│   ├── constant        # 常量类（Redis Key、魔法值等）
 │   ├── convention
 │   │   ├── errorcode   # 错误码接口与基础枚举
 │   │   ├── exception   # 异常体系
@@ -54,8 +56,7 @@ com.xmon.shanlink.admin
 - 主键：`@TableId(type = IdType.AUTO)`
 - **每个字段必须添加 Javadoc 注释**，注释内容取自 SQL 的 `COMMENT`
 - 字段类型：时间用 `Date`，删除标识用 `Integer`
-- 自动填充字段必须加 `@TableField(fill = FieldFill.INSERT)` 或 `@TableField(fill = FieldFill.INSERT_UPDATE)`，否则
-  `MetaObjectHandler` 不生效
+- 自动填充字段必须加 `@TableField(fill = ...)` 注解，否则 `MetaObjectHandler` 不生效
 
 ```java
 
@@ -99,23 +100,16 @@ public class UserDO {
 所有 Controller 返回值使用 `Result<T>`，通过 `Results` 工厂方法构造：
 
 ```java
-// 成功（无数据）
-return Results.success();
-
-// 成功（带数据）
+return Results.success();          // 成功（无数据）
 return Results.
 
-success(userVO);
-
-// 失败
+success(userVO);    // 成功（带数据）
 return Results.
 
-failure(abstractException);
+failure(ex);        // 失败
 ```
 
 ### 异常体系
-
-抛出异常时根据来源选择对应类型：
 
 | 类型                 | 场景                  |
 |--------------------|---------------------|
@@ -124,31 +118,33 @@ failure(abstractException);
 | `RemoteException`  | 调用第三方服务失败           |
 
 ```java
-throw new ClientException(UserErrorCodeEnum.USER_NAME_EXIST_ERROR);
+throw new ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
 ```
 
 ### 错误码
 
 业务模块新增错误码时，创建独立枚举实现 `IErrorCode`，遵循前缀规范：
 
-- `A` 开头：客户端错误
-- `B` 开头：服务端错误
+- `A` 开头：客户端错误（用户输入、权限、业务校验）
+- `B` 开头：服务端错误（系统执行失败）
 - `C` 开头：远程调用错误
 
 ```java
 public enum UserErrorCodeEnum implements IErrorCode {
-    USER_NAME_EXIST_ERROR("A000111", "用户名已存在");
-    // ...
+    USER_NULL("A000200", "用户记录不存在"),
+    USER_NAME_EXIST("A000201", "用户名已存在"),
+    USER_PASSWORD_ERROR("A000203", "用户密码错误"),
+    USER_SAVE_ERROR("B000200", "用户记录新增失败");
 }
 ```
 
 ### 对象映射
 
-禁止手写 getter/setter 赋值，使用 `BeanUtil`：
+禁止手写 getter/setter 赋值，使用 Hutool 的 `BeanUtil`：
 
 ```java
-// 单对象转换
-UserDO userDO = BeanUtil.convert(reqDTO, UserDO.class);
+// 单对象转换（推荐）
+UserDO userDO = BeanUtil.toBean(reqDTO, UserDO.class);
 
 // 更新时忽略空字段
 BeanUtil.
@@ -156,44 +152,64 @@ BeanUtil.
 convertIgnoreNull(updateReqDTO, existingDO);
 ```
 
-### 敏感字段脱敏
+禁止使用 Spring 的 `BeanUtils.copyProperties`。
 
-VO 中手机号、身份证字段使用 `@JsonSerialize` 注解，序列化时自动打码：
+### 参数校验
+
+DTO 字段加 `@NotBlank` 等注解，Controller 方法加 `@Validated`，`GlobalExceptionHandler` 已统一处理
+`MethodArgumentNotValidException`：
 
 ```java
+// DTO
+@NotBlank(message = "用户名不能为空")
+private String username;
 
+// Controller
+public Result<Void> register(@RequestBody @Validated UserRegisterReqDTO requestParam)
+```
+
+### 敏感字段脱敏
+
+DTO 中手机号、身份证字段使用 `@JsonSerialize` 注解，序列化时自动打码：
+
+```java
 @JsonSerialize(using = PhoneDesensitizationSerializer.class)
 private String phone;
-
-@JsonSerialize(using = IdCardDesensitizationSerializer.class)
-private String idCard;
 ```
 
 ### 布隆过滤器
 
-`RBloomFilter` 注册为 Spring Bean，由 `ApplicationRunner` 负责初始化并加载存量数据：
+`RBloomFilter` 注册为 Spring Bean，`ApplicationRunner` 负责初始化并加载存量数据：
 
 ```java
-// config/RBloomFilterConfiguration.java
+// RBloomFilterConfiguration.java —— 只获取引用，不调用 tryInit
 @Bean
 public RBloomFilter<String> userRegisterCachePenetrationBloomFilter(RedissonClient redissonClient) {
     return redissonClient.getBloomFilter("userRegisterCachePenetrationBloomFilter");
 }
 
-// ApplicationRunner 里调用 tryInit，返回 true 表示 BF 是新建的，需要从 DB 加载存量数据
+// ApplicationRunner —— tryInit 返回 true 表示 BF 新建，需从 DB 加载存量数据
 boolean isNew = bloomFilter.tryInit(100000000L, 0.001);
 if(isNew){
-        // 查库全量写入
+        userMapper.
+
+selectList(Wrappers.lambdaQuery(UserDO.class).
+
+select(UserDO::getUsername))
+        .
+
+forEach(user ->bloomFilter.
+
+add(user.getUsername()));
         }
 ```
 
-- `tryInit` 若 Redis 中已存在该 BF 则返回 `false`，数据不会被清空
-- 注册成功后调用 `bloomFilter.add(username)` 同步写入
+- `tryInit` 若 Redis 中已存在该 BF 则返回 `false`，数据不被清空
 - BF 只能减少查库，不能保证唯一性，**数据库必须加唯一索引兜底**
 
 ### 注册安全
 
-用户名唯一性校验需双重保障：
+三层防护，缺一不可：
 
 ```java
 // 1. BF 前置拦截（减少查库）
@@ -202,48 +218,76 @@ if(bloomFilter.contains(username)){
 
 ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
 }
-        // 2. 唯一索引兜底（防竞态条件）
-        try{
+// 2. 分布式锁（防相同用户名并发注册）
+RLock lock = redissonClient.getLock(LOCK_USER_REGISTER_KEY + username);
+if(!lock.
 
-save(userDO);
-}catch(
-DuplicateKeyException e){
+tryLock()){
         throw new
 
 ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
 }
+        try{
+
+save(userDO);
+    bloomFilter.
+
+add(username);
+}catch(
+DuplicateKeyException e){
+        // 3. 唯一索引兜底（防极端竞态）
+        throw new
+
+ClientException(UserErrorCodeEnum.USER_EXIST);
+}finally{
+        lock.
+
+unlock();
+}
 ```
 
-密码存储前必须加密，使用 Hutool 的 `DigestUtil.md5Hex(password)`。
+- `tryLock()` 不等待，抢不到直接拒绝，锁粒度为用户名级别
+- `save()` 单条插入要么成功要么抛异常，无需检查返回值
+- 有 `@Transactional` 时，**不能**在事务内写 BF，否则事务回滚后 BF 数据无法撤销
+
+### 用户登录
+
+登录态基于 Redis Hash 存储，token 为 UUID：
+
+```
+Key:   shan-link:login:{username}   (Hash)
+Field: token (UUID)
+Value: 用户信息 JSON（Fastjson2 序列化）
+TTL:   USER_LOGIN_TTL（默认 30 天）
+```
+
+- 已登录则续期并返回已有 token，不重复生成
+- 用 `StringRedisTemplate` 操作 Hash（值为明文 JSON，便于调试）；避免用 `RMap`（Redisson 默认二进制序列化，Redis CLI 查看乱码）
+- 所有过期时间等魔法值抽取到 `RedisCacheConstant`
+
+### 登录拦截器 + ThreadLocal
+
+```
+请求
+ ├─ 拦截器：Header 取 token → 查 Redis Hash → 验证登录态
+ │           └─ UserContext.setUsername(...)   存入 ThreadLocal
+ ├─ Controller / Service
+ │           └─ UserContext.getUsername()      取当前用户
+ └─ 请求结束：UserContext.removeUser()         必须清除，防内存泄漏
+```
 
 ### Redis Key 命名规范
 
-- 用 `:` 分隔命名空间层级
-- 同一段内统一用 `-`，禁止混用 `_` 和 `-`
+- 用 `:` 分隔命名空间层级，同一段内统一用 `-`，禁止混用 `_` 和 `-`
 - 格式：`shan-link:{业务}:{资源}:`
 
 ```java
-// 正确
-"shan-link:lock:user-register:"
-        "shan-link:login:"
-
-        // 错误（混用 _ 和 -）
-        "shan-link:lock_user-register:"
+"shan-link:lock:user-register:"   // 正确
+        "shan-link:login:"                // 正确
+        "shan-link:lock_user-register:"   // 错误，混用了 _ 和 -
 ```
 
-### ShardingSphere
-
-使用 JDBC 模式，数据源配置在 `shardingsphere-config.yaml`，`application.yml` 只保留驱动声明：
-
-```yaml
-# application.yml
-spring:
-  datasource:
-    driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
-    url: jdbc:shardingsphere:classpath:shardingsphere-config.yaml
-```
-
-调试时在 `shardingsphere-config.yaml` 开启 `props.sql-show: true` 查看路由后的实际 SQL。
+所有 Key 和 TTL 常量统一放在 `RedisCacheConstant`。
 
 ### API 路径规范
 
@@ -252,15 +296,3 @@ spring:
 ```
 
 示例：`/api/shan-link/admin/v1/user/{username}`
-
-## Git 提交规范
-
-使用 Conventional Commits，**描述和 body 用中文**：
-
-```
-feat(user): 新增用户注册接口
-
-实现用户名唯一性校验与密码加密存储。
-```
-
-类型：`feat` / `fix` / `refactor` / `docs` / `build` / `chore`
