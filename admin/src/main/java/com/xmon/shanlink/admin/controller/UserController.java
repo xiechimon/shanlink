@@ -3,7 +3,6 @@ package com.xmon.shanlink.admin.controller;
 import cn.hutool.core.bean.BeanUtil;
 import com.xmon.shanlink.admin.common.convention.result.Result;
 import com.xmon.shanlink.admin.common.convention.result.Results;
-import com.xmon.shanlink.admin.dao.entity.UserDO;
 import com.xmon.shanlink.admin.dto.req.UserRegisterReqDTO;
 import com.xmon.shanlink.admin.dto.resp.UserActualRespDTO;
 import com.xmon.shanlink.admin.dto.resp.UserRespDTO;
