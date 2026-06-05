@@ -2,6 +2,7 @@ package com.xmon.shanlink.admin.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xmon.shanlink.admin.dao.entity.GroupDO;
+import com.xmon.shanlink.admin.dto.req.GroupSortReqDTO;
 import com.xmon.shanlink.admin.dto.req.GroupUpdateReqDO;
 import com.xmon.shanlink.admin.dto.resp.GroupRespDTO;
 
@@ -32,6 +33,13 @@ public interface GroupService extends IService<GroupDO> {
      * @param requestParam 短链接分组请求参数
      */
     void updateGroup(GroupUpdateReqDO requestParam);
+
+    /**
+     * 短链接分组排序
+     *
+     * @param requestParam 短链接分组排序请求参数
+     */
+    void sortGroup(List<GroupSortReqDTO> requestParam);
 
     /**
      * 删除短链接分组

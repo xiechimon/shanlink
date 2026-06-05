@@ -2,8 +2,8 @@ package com.xmon.shanlink.admin.controller;
 
 import com.xmon.shanlink.admin.common.convention.result.Result;
 import com.xmon.shanlink.admin.common.convention.result.Results;
-import com.xmon.shanlink.admin.dao.entity.GroupDO;
 import com.xmon.shanlink.admin.dto.req.GroupSaveReqDTO;
+import com.xmon.shanlink.admin.dto.req.GroupSortReqDTO;
 import com.xmon.shanlink.admin.dto.req.GroupUpdateReqDO;
 import com.xmon.shanlink.admin.dto.resp.GroupRespDTO;
 import com.xmon.shanlink.admin.service.GroupService;
@@ -46,10 +46,19 @@ public class GroupController {
     }
 
     /**
+     * 短链接分组排序
+     */
+    @PutMapping("/sort")
+    public Result<Void> sortGroup(@RequestBody List<GroupSortReqDTO> requestParam) {
+        groupService.sortGroup(requestParam);
+        return Results.success();
+    }
+
+    /**
      * 删除短链接分组
      */
     @DeleteMapping
-    public Result<Void> deleteGroup(@RequestBody String gid) {
+    public Result<Void> deleteGroup(@RequestParam("gid") String gid) {
         groupService.deleteGroup(gid);
         return Results.success();
     }

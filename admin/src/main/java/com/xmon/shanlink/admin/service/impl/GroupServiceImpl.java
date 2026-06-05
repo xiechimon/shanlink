@@ -1,9 +1,7 @@
 package com.xmon.shanlink.admin.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xmon.shanlink.admin.common.biz.user.UserContext;
@@ -11,6 +9,7 @@ import com.xmon.shanlink.admin.common.convention.exception.ClientException;
 import com.xmon.shanlink.admin.common.enums.GroupErrorCodeEnum;
 import com.xmon.shanlink.admin.dao.entity.GroupDO;
 import com.xmon.shanlink.admin.dao.mapper.GroupMapper;
+import com.xmon.shanlink.admin.dto.req.GroupSortReqDTO;
 import com.xmon.shanlink.admin.dto.req.GroupUpdateReqDO;
 import com.xmon.shanlink.admin.dto.resp.GroupRespDTO;
 import com.xmon.shanlink.admin.service.GroupService;
@@ -78,6 +77,14 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                        .set(GroupDO::getName, requestParam.getName())
                        .eq(GroupDO::getGid, requestParam.getGid())
                        .eq(GroupDO::getUsername, UserContext.getUsername()));
+    }
+
+    @Override
+    public void sortGroup(List<GroupSortReqDTO> requestParam) {
+        requestParam.forEach(item -> update(Wrappers.lambdaUpdate(GroupDO.class)
+                .set(GroupDO::getSortOrder, item.getSortOrder())
+                .eq(GroupDO::getGid, item.getGid())
+                .eq(GroupDO::getUsername, UserContext.getUsername())));
     }
 
     @Override
