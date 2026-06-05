@@ -1,4 +1,6 @@
-# ShanLink 项目规范
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 项目概述
 
@@ -6,12 +8,33 @@
 
 **模块**
 
-| 模块          | 描述          |
-|-------------|-------------|
-| `admin`     | 用户管理后台服务    |
-| `project`   | 短链核心业务服务    |
-| `gateway`   | 网关服务        |
-| `dashboard` | Vue3 前端管理面板 |
+| 模块          | 描述          | 端口   |
+|-------------|-------------|------|
+| `admin`     | 用户管理后台服务    | 8002 |
+| `project`   | 短链核心业务服务    | —    |
+| `gateway`   | 网关服务        | 8000 |
+| `dashboard` | Vue3 前端管理面板 | —    |
+
+## 构建与运行
+
+```bash
+# 构建所有模块（根目录）
+mvn clean package -DskipTests
+
+# 构建单个模块
+mvn clean package -pl admin -DskipTests
+
+# 运行 admin 服务
+mvn spring-boot:run -pl admin
+
+# 运行单个测试类
+mvn test -pl admin -Dtest=UserServiceTest
+
+# 运行单个测试方法
+mvn test -pl admin -Dtest=UserServiceTest#testRegister
+```
+
+前置依赖：MySQL（`shanlink` 库，见 `resources/database/link_v0.sql`）、Redis（默认 127.0.0.1:6379）。
 
 ## 技术栈
 
@@ -20,8 +43,8 @@
 - **ShardingSphere** 5.3.2（分库分表）
 - **Redisson** 3.27.2（Redis 客户端）
 - **Fastjson2** 2.0.36（JSON 序列化，用于 Redis 存取对象）
-- **Dozer** 6.5.2（对象属性映射）
 - **Hutool** 5.8.27（工具库）
+- **TTL** 2.14.3（`TransmittableThreadLocal`，跨线程池传递用户上下文）
 - **Lombok**（全局依赖，无需子模块单独引入）
 - 前端：Vue3 + Element Plus + Vite
 
@@ -30,39 +53,39 @@
 ```
 com.xmon.shanlink.admin
 ├── common
-│   ├── constant        # 常量类（Redis Key、魔法值等）
+│   ├── biz.user        # 用户上下文（UserContext、UserInfoDTO、UserTransmitFilter）
+│   ├── constant        # 常量类（Redis Key、TTL 等）
 │   ├── convention
 │   │   ├── errorcode   # 错误码接口与基础枚举
 │   │   ├── exception   # 异常体系
 │   │   └── result      # 统一响应对象
-│   ├── enums           # 业务枚举
+│   ├── database        # BaseDO（公共字段基类）
+│   ├── enums           # 业务枚举（错误码）
 │   ├── serialize       # 自定义 Jackson 序列化器
 │   └── web             # 全局异常处理
-├── config              # 配置类
+├── config              # 配置类（布隆过滤器、MetaObjectHandler、用户过滤器注册）
 ├── controller          # 控制层
 ├── dao
 │   └── entity          # 数据库实体 (DO)
 ├── dto                 # 请求/响应 DTO
 ├── remote              # 远程调用
 ├── service             # 业务层
-└── toolkit             # 工具类
+└── toolkit             # 工具类（RandomGenerator 等）
 ```
 
 ## 编码规范
 
 ### 实体类（DO）
 
-- 注解：`@Data`、`@TableName("表名")`
-- 主键：`@TableId(type = IdType.AUTO)`
-- **每个字段必须添加 Javadoc 注释**，注释内容取自 SQL 的 `COMMENT`
-- 字段类型：时间用 `Date`，删除标识用 `Integer`
-- 自动填充字段必须加 `@TableField(fill = ...)` 注解，否则 `MetaObjectHandler` 不生效
+继承 `BaseDO`（已包含 `createTime`、`updateTime`、`delFlag` 及对应 `@TableField(fill=...)` 注解），自定义字段只加业务列。每个字段
+**必须添加 Javadoc 注释**，内容取自 SQL `COMMENT`。
 
 ```java
 
 @Data
-@TableName("t_user")
-public class UserDO {
+@Builder
+@TableName("t_group")
+public class GroupDO extends BaseDO {
 
     /**
      * ID
@@ -71,42 +94,28 @@ public class UserDO {
     private Long id;
 
     /**
-     * 用户名
+     * 分组标识
      */
-    private String username;
-
-    /**
-     * 创建时间
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private Date createTime;
-
-    /**
-     * 修改时间
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private Date updateTime;
-
-    /**
-     * 删除标识 0：未删除 1：已删除
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private Integer delFlag;
+    private String gid;
 }
 ```
+
+- 主键：`@TableId(type = IdType.AUTO)`
+- 时间字段用 `Date`，删除标识用 `Integer`
+- 自动填充字段若不在 `BaseDO` 中，须手动加 `@TableField(fill = ...)`
 
 ### 统一响应
 
 所有 Controller 返回值使用 `Result<T>`，通过 `Results` 工厂方法构造：
 
 ```java
-return Results.success();          // 成功（无数据）
+return Results.success();           // 成功（无数据）
 return Results.
 
-success(userVO);    // 成功（带数据）
+success(userVO);     // 成功（带数据）
 return Results.
 
-failure(ex);        // 失败
+failure(ex);         // 失败
 ```
 
 ### 异常体系
@@ -143,7 +152,7 @@ public enum UserErrorCodeEnum implements IErrorCode {
 禁止手写 getter/setter 赋值，使用 Hutool 的 `BeanUtil`：
 
 ```java
-// 单对象转换（推荐）
+// 单对象转换
 UserDO userDO = BeanUtil.toBean(reqDTO, UserDO.class);
 
 // 更新时忽略空字段
@@ -173,35 +182,23 @@ public Result<Void> register(@RequestBody @Validated UserRegisterReqDTO requestP
 DTO 中手机号、身份证字段使用 `@JsonSerialize` 注解，序列化时自动打码：
 
 ```java
+
 @JsonSerialize(using = PhoneDesensitizationSerializer.class)
 private String phone;
 ```
 
 ### 布隆过滤器
 
-`RBloomFilter` 注册为 Spring Bean，`ApplicationRunner` 负责初始化并加载存量数据：
+`RBloomFilter` 在 `RBloomFilterConfiguration` 中注册为 Spring Bean，`tryInit` 直接在 `@Bean` 方法里调用：
 
 ```java
-// RBloomFilterConfiguration.java —— 只获取引用，不调用 tryInit
+
 @Bean
 public RBloomFilter<String> userRegisterCachePenetrationBloomFilter(RedissonClient redissonClient) {
-    return redissonClient.getBloomFilter("userRegisterCachePenetrationBloomFilter");
+    RBloomFilter<String> bf = redissonClient.getBloomFilter("userRegisterCachePenetrationBloomFilter");
+    bf.tryInit(100000000L, 0.001);
+    return bf;
 }
-
-// ApplicationRunner —— tryInit 返回 true 表示 BF 新建，需从 DB 加载存量数据
-boolean isNew = bloomFilter.tryInit(100000000L, 0.001);
-if(isNew){
-        userMapper.
-
-selectList(Wrappers.lambdaQuery(UserDO.class).
-
-select(UserDO::getUsername))
-        .
-
-forEach(user ->bloomFilter.
-
-add(user.getUsername()));
-        }
 ```
 
 - `tryInit` 若 Redis 中已存在该 BF 则返回 `false`，数据不被清空
@@ -247,7 +244,6 @@ unlock();
 ```
 
 - `tryLock()` 不等待，抢不到直接拒绝，锁粒度为用户名级别
-- `save()` 单条插入要么成功要么抛异常，无需检查返回值
 - 有 `@Transactional` 时，**不能**在事务内写 BF，否则事务回滚后 BF 数据无法撤销
 
 ### 用户登录
@@ -265,16 +261,19 @@ TTL:   USER_LOGIN_TTL（默认 30 天）
 - 用 `StringRedisTemplate` 操作 Hash（值为明文 JSON，便于调试）；避免用 `RMap`（Redisson 默认二进制序列化，Redis CLI 查看乱码）
 - 所有过期时间等魔法值抽取到 `RedisCacheConstant`
 
-### 登录拦截器 + ThreadLocal
+### 用户上下文传递
+
+Gateway 鉴权后将用户信息注入请求头，下游服务通过 `UserTransmitFilter` 读取并存入 `TransmittableThreadLocal`：
 
 ```
 请求
- ├─ 拦截器：Header 取 token → 查 Redis Hash → 验证登录态
- │           └─ UserContext.setUsername(...)   存入 ThreadLocal
- ├─ Controller / Service
- │           └─ UserContext.getUsername()      取当前用户
- └─ 请求结束：UserContext.removeUser()         必须清除，防内存泄漏
+ ├─ Gateway：鉴权 → 写入 Header（username / userId / realName）
+ ├─ UserTransmitFilter（order=0）：读 Header → UserContext.setUser(UserInfoDTO)
+ ├─ Controller / Service：UserContext.getUsername() / getUserId() / getRealName()
+ └─ 请求结束（finally）：UserContext.removeUser()  ← 必须清除，防内存泄漏
 ```
+
+`UserContext` 使用 `TransmittableThreadLocal`，可跨线程池（异步任务）透传用户信息。
 
 ### Redis Key 命名规范
 
