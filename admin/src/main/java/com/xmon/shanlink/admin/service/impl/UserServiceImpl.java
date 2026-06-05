@@ -92,7 +92,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
 
     @Override
     public UserLoginRespDTO login(UserLoginReqDTO requestParam) {
-        // 1. 查询用户
+        // 查询用户
         LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
                 .eq(UserDO::getUsername, requestParam.getUsername())
                 .eq(UserDO::getDelFlag, 0);
@@ -100,24 +100,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         if (userDO == null) {
             throw new ClientException(UserErrorCodeEnum.USER_NULL);
         }
-        // 2. 验证密码
+        // 验证密码
         if (!userDO.getPassword().equals(requestParam.getPassword())) {
             throw new ClientException(UserErrorCodeEnum.USER_PASSWORD_ERROR);
         }
-        // 3. 已登录则续期并返回已有 token
+        // 已登录：直接返回已有 token
+        // TODO：后续用 Gateway 进行滑动续期
         String loginKey = USER_LOGIN_KEY + requestParam.getUsername();
 
         Map<Object, Object> loginMap = stringRedisTemplate.opsForHash().entries(loginKey);
         if (CollUtil.isNotEmpty(loginMap)) {
-            stringRedisTemplate.expire(loginKey, USER_LOGIN_TTL, TimeUnit.DAYS);
             String token = loginMap.keySet().iterator().next().toString();
             return new UserLoginRespDTO(token);
         }
-        // 4. 生成 token，存入 Redis Hash，过期时间 30 天
+        // 未登录：生成新 token
         String token = UUID.randomUUID().toString();
         stringRedisTemplate.opsForHash().put(loginKey, token, JSON.toJSONString(userDO));
         stringRedisTemplate.expire(loginKey, USER_LOGIN_TTL, TimeUnit.DAYS);
-        // 5. 返回 token
+        // 返回 token
         return new UserLoginRespDTO(token);
     }
 

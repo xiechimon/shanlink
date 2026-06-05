@@ -24,6 +24,7 @@
         <hutool-all.version>5.8.27</hutool-all.version>
         <redisson.version>3.27.2</redisson.version>
         <guava.version>30.0-jre</guava.version>
+        <ttl.version>2.14.3</ttl.version>
         <jsoup.version>1.15.3</jsoup.version>
         <easyexcel.version>3.1.3</easyexcel.version>
     </properties>
@@ -106,6 +107,12 @@
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>transmittable-thread-local</artifactId>
+                <version>${ttl.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
