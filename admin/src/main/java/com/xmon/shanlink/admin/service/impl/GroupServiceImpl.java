@@ -71,19 +71,39 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
     @Override
     public void updateGroup(GroupUpdateReqDO requestParam) {
         // 校验
-        LambdaQueryWrapper<GroupDO> queryWrapper = Wrappers.lambdaQuery(GroupDO.class)
-                .eq(GroupDO::getUsername, UserContext.getUsername())
-                .eq(GroupDO::getGid, requestParam.getGid())
-                .eq(GroupDO::getDelFlag, 0);
-        GroupDO groupDO = getOne(queryWrapper);
-        if (groupDO == null) {
-            throw new ClientException(GroupErrorCodeEnum.GROUP_NOT_EXIST);
-        }
+        extracted(requestParam.getGid());
 
         // 更新
         update(Wrappers.lambdaUpdate(GroupDO.class)
                        .set(GroupDO::getName, requestParam.getName())
                        .eq(GroupDO::getGid, requestParam.getGid())
                        .eq(GroupDO::getUsername, UserContext.getUsername()));
+    }
+
+    @Override
+    public void deleteGroup(String gid) {
+        // 校验
+        extracted(gid);
+
+        // 删除
+        update(Wrappers.lambdaUpdate(GroupDO.class)
+                       .set(GroupDO::getDelFlag, 1)
+                       .eq(GroupDO::getGid, gid)
+                       .eq(GroupDO::getUsername, UserContext.getUsername()));
+    }
+
+    /**
+     * 校验是否是当前用户下分组
+     */
+    private void extracted(String gid) {
+        // 校验
+        LambdaQueryWrapper<GroupDO> queryWrapper = Wrappers.lambdaQuery(GroupDO.class)
+                .eq(GroupDO::getUsername, UserContext.getUsername())
+                .eq(GroupDO::getGid, gid)
+                .eq(GroupDO::getDelFlag, 0);
+        GroupDO groupDO = getOne(queryWrapper);
+        if (groupDO == null) {
+            throw new ClientException(GroupErrorCodeEnum.GROUP_NOT_EXIST);
+        }
     }
 }

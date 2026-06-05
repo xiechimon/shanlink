@@ -2,6 +2,7 @@ package com.xmon.shanlink.admin.controller;
 
 import com.xmon.shanlink.admin.common.convention.result.Result;
 import com.xmon.shanlink.admin.common.convention.result.Results;
+import com.xmon.shanlink.admin.dao.entity.GroupDO;
 import com.xmon.shanlink.admin.dto.req.GroupSaveReqDTO;
 import com.xmon.shanlink.admin.dto.req.GroupUpdateReqDO;
 import com.xmon.shanlink.admin.dto.resp.GroupRespDTO;
@@ -41,6 +42,15 @@ public class GroupController {
     @PutMapping
     public Result<Void> updateGroup(@RequestBody GroupUpdateReqDO requestParam) {
         groupService.updateGroup(requestParam);
+        return Results.success();
+    }
+
+    /**
+     * 删除短链接分组
+     */
+    @DeleteMapping
+    public Result<Void> deleteGroup(@RequestBody String gid) {
+        groupService.deleteGroup(gid);
         return Results.success();
     }
 }
