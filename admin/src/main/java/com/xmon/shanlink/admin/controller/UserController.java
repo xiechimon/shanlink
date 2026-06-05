@@ -45,7 +45,7 @@ public class UserController {
      * 查询用户名是否存在
      */
     @GetMapping("/check-username")
-    public Result<Boolean> checkUsername(@RequestParam("username") String username) {
+    public Result<Boolean> checkUsername(@RequestParam String username) {
         return Results.success(userService.checkUsername(username));
     }
 

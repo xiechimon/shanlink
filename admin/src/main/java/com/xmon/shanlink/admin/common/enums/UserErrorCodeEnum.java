@@ -15,6 +15,8 @@ public enum UserErrorCodeEnum implements IErrorCode {
 
     USER_NOT_LOGIN("A000204", "用户未登录"),
 
+    USER_UPDATE_NO_PERMISSION("A000205", "用户信息修改无权限"),
+
     USER_SAVE_ERROR("B000200", "用户记录新增失败");
 
     private final String code;

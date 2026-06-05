@@ -7,6 +7,7 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xmon.shanlink.admin.common.biz.user.UserContext;
 import com.xmon.shanlink.admin.common.convention.exception.ClientException;
 import com.xmon.shanlink.admin.common.enums.UserErrorCodeEnum;
 import com.xmon.shanlink.admin.dao.entity.UserDO;
@@ -83,7 +84,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
 
     @Override
     public void update(UserUpdateReqDTO requestParam) {
-        // TODO：后续可以增加用户信息修改权限校验
+        if (UserContext.getUsername() == null || !UserContext.getUsername().equals(requestParam.getUsername())) {
+            throw new ClientException(UserErrorCodeEnum.USER_UPDATE_NO_PERMISSION);
+        }
+
         LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
                 .eq(UserDO::getUsername, requestParam.getUsername());
 
