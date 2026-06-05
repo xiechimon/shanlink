@@ -9,6 +9,8 @@ public enum GroupErrorCodeEnum implements IErrorCode {
 
     GROUP_NAME_EXIST("A000300", "分组名已存在"),
 
+    GROUP_NOT_EXIST("A000301", "分组不存在"),
+
     GROUP_SAVE_ERROR("B000300", "分组新增失败");
 
     private final String code;

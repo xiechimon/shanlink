@@ -3,6 +3,7 @@ package com.xmon.shanlink.admin.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xmon.shanlink.admin.common.biz.user.UserContext;
@@ -10,6 +11,7 @@ import com.xmon.shanlink.admin.common.convention.exception.ClientException;
 import com.xmon.shanlink.admin.common.enums.GroupErrorCodeEnum;
 import com.xmon.shanlink.admin.dao.entity.GroupDO;
 import com.xmon.shanlink.admin.dao.mapper.GroupMapper;
+import com.xmon.shanlink.admin.dto.req.GroupUpdateReqDO;
 import com.xmon.shanlink.admin.dto.resp.GroupRespDTO;
 import com.xmon.shanlink.admin.service.GroupService;
 import com.xmon.shanlink.admin.toolkit.RandomGenerator;
@@ -64,5 +66,24 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                 .eq(GroupDO::getDelFlag, 0)
                 .orderByDesc(GroupDO::getSortOrder);
         return BeanUtil.copyToList(list(queryWrapper), GroupRespDTO.class);
+    }
+
+    @Override
+    public void updateGroup(GroupUpdateReqDO requestParam) {
+        // 校验
+        LambdaQueryWrapper<GroupDO> queryWrapper = Wrappers.lambdaQuery(GroupDO.class)
+                .eq(GroupDO::getUsername, UserContext.getUsername())
+                .eq(GroupDO::getGid, requestParam.getGid())
+                .eq(GroupDO::getDelFlag, 0);
+        GroupDO groupDO = getOne(queryWrapper);
+        if (groupDO == null) {
+            throw new ClientException(GroupErrorCodeEnum.GROUP_NOT_EXIST);
+        }
+
+        // 更新
+        update(Wrappers.lambdaUpdate(GroupDO.class)
+                       .set(GroupDO::getName, requestParam.getName())
+                       .eq(GroupDO::getGid, requestParam.getGid())
+                       .eq(GroupDO::getUsername, UserContext.getUsername()));
     }
 }

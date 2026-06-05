@@ -3,6 +3,7 @@ package com.xmon.shanlink.admin.controller;
 import com.xmon.shanlink.admin.common.convention.result.Result;
 import com.xmon.shanlink.admin.common.convention.result.Results;
 import com.xmon.shanlink.admin.dto.req.GroupSaveReqDTO;
+import com.xmon.shanlink.admin.dto.req.GroupUpdateReqDO;
 import com.xmon.shanlink.admin.dto.resp.GroupRespDTO;
 import com.xmon.shanlink.admin.service.GroupService;
 import lombok.RequiredArgsConstructor;
@@ -34,4 +35,12 @@ public class GroupController {
         return Results.success(groupService.listGroup());
     }
 
+    /**
+     * 修改短链接分组
+     */
+    @PutMapping
+    public Result<Void> updateGroup(@RequestBody GroupUpdateReqDO requestParam) {
+        groupService.updateGroup(requestParam);
+        return Results.success();
+    }
 }
