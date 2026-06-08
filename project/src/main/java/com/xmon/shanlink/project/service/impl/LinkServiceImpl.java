@@ -93,10 +93,10 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     public void updateLink(LinkUpdateReqDTO requestParam) {
         update(Wrappers.lambdaUpdate(LinkDO.class)
                        .set(LinkDO::getOriginUrl, requestParam.getOriginUrl())
-                       .set(LinkDO::getGid, requestParam.getGid())
                        .set(LinkDO::getValidDateType, requestParam.getValidDateType())
                        .set(LinkDO::getValidDate, requestParam.getValidDate())
                        .set(LinkDO::getDescribe, requestParam.getDescribe())
+                       .eq(LinkDO::getGid, requestParam.getGid())
                        .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
                        .eq(LinkDO::getDelFlag, 0)
                        .eq(LinkDO::getDelTime, 0L));
