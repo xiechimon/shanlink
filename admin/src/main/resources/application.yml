@@ -18,3 +18,7 @@ spring:
       host: 127.0.0.1
       port: 6379
       username: root
+
+remote:
+  project:
+    url: http://127.0.0.1:8001
