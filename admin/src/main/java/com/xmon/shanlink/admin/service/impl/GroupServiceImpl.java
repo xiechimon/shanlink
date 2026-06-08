@@ -70,7 +70,7 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
     @Override
     public void updateGroup(GroupUpdateReqDO requestParam) {
         // 校验
-        extracted(requestParam.getGid());
+        verifyGroupBelongsToCurrentUser(requestParam.getGid());
 
         // 更新
         update(Wrappers.lambdaUpdate(GroupDO.class)
@@ -90,7 +90,7 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
     @Override
     public void deleteGroup(String gid) {
         // 校验
-        extracted(gid);
+        verifyGroupBelongsToCurrentUser(gid);
 
         // 删除
         update(Wrappers.lambdaUpdate(GroupDO.class)
@@ -99,11 +99,8 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                        .eq(GroupDO::getUsername, UserContext.getUsername()));
     }
 
-    /**
-     * 校验是否是当前用户下分组
-     */
-    private void extracted(String gid) {
-        // 校验
+    @Override
+    public void verifyGroupBelongsToCurrentUser(String gid) {
         LambdaQueryWrapper<GroupDO> queryWrapper = Wrappers.lambdaQuery(GroupDO.class)
                 .eq(GroupDO::getUsername, UserContext.getUsername())
                 .eq(GroupDO::getGid, gid)

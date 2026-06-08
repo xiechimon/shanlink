@@ -47,4 +47,11 @@ public interface GroupService extends IService<GroupDO> {
      * @param gid 分组标识
      */
     void deleteGroup(String gid);
+
+    /**
+     * 校验分组是否属于当前用户
+     *
+     * @param gid 分组标识
+     */
+    void verifyGroupBelongsToCurrentUser(String gid);
 }
