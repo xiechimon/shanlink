@@ -16,6 +16,7 @@ import com.xmon.shanlink.admin.service.GroupService;
 import com.xmon.shanlink.admin.toolkit.RandomGenerator;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -52,7 +53,11 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                 .username(UserContext.getUsername())
                 .sortOrder(0)
                 .build();
-        save(groupDO);
+        try {
+            save(groupDO);
+        } catch (DuplicateKeyException e) {
+            throw new ClientException(GroupErrorCodeEnum.GROUP_NAME_EXIST);
+        }
         gidRegisterCachePenetrationBloomFilter.add(gid);
     }
 
