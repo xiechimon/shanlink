@@ -79,7 +79,7 @@ public class UserController {
      * 检查用户是否登陆
      */
     @GetMapping("/check-login")
-    public Result<Boolean> checkLogin(@RequestParam String username, @RequestParam String token) {
+    public Result<Boolean> checkLogin(@RequestHeader String username, @RequestHeader String token) {
         return Results.success(userService.checkLogin(username, token));
     }
 
@@ -87,7 +87,7 @@ public class UserController {
      * 用户退出登录
      */
     @DeleteMapping("/logout")
-    public Result<Void> logout(@RequestParam String username, @RequestParam String token) {
+    public Result<Void> logout(@RequestHeader String username, @RequestHeader String token) {
         userService.logout(username, token);
         return Results.success();
     }
