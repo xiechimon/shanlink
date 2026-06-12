@@ -14,6 +14,7 @@ import com.xmon.shanlink.project.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.project.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.project.dto.req.LinkUpdateReqDTO;
 import com.xmon.shanlink.project.dto.resp.LinkCreateRespDTO;
+import com.xmon.shanlink.project.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.project.dto.resp.LinkPageRespDTO;
 import com.xmon.shanlink.project.service.LinkService;
 import com.xmon.shanlink.project.toolkit.HashUtil;
@@ -23,6 +24,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 短链接接口实现层
  */
@@ -31,6 +34,7 @@ import org.springframework.stereotype.Service;
 public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements LinkService {
 
     private final RBloomFilter<String> shortUriCreateCachePenetrationBloomFilter;
+    private final LinkMapper linkMapper;
 
     @Value("${shan-link.domain.default}")
     private String createShortLinkDefaultDomain;
@@ -110,6 +114,12 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                        .eq(LinkDO::getFullShortUrl, fullShortUrl)
                        .eq(LinkDO::getDelFlag, 0)
                        .eq(LinkDO::getDelTime, 0L));
+    }
+
+    @Override
+    public List<LinkGroupCountQueryRespDTO> listGroupShortLinkCount(List<String> requestParam) {
+
+        return linkMapper.listGroupShortLinkCount(requestParam);
     }
 
     /**

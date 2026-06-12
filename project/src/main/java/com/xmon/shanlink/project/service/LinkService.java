@@ -7,7 +7,10 @@ import com.xmon.shanlink.project.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.project.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.project.dto.req.LinkUpdateReqDTO;
 import com.xmon.shanlink.project.dto.resp.LinkCreateRespDTO;
+import com.xmon.shanlink.project.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.project.dto.resp.LinkPageRespDTO;
+
+import java.util.List;
 
 /**
  * 短链接接口层
@@ -43,4 +46,12 @@ public interface LinkService extends IService<LinkDO> {
      * @param fullShortUrl 完整短链接
      */
     void deleteLink(String fullShortUrl);
+
+    /**
+     * 查询短链接分组内数量
+     *
+     * @param requestParam 查询短链接分组内数量请求参数
+     * @return 查询短链接分组内数量响应
+     */
+    List<LinkGroupCountQueryRespDTO> listGroupShortLinkCount(List<String> requestParam);
 }
