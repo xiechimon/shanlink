@@ -7,6 +7,7 @@ import com.xmon.shanlink.admin.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkUpdateReqDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkCreateRespDTO;
+import com.xmon.shanlink.admin.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkPageRespDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.SpringQueryMap;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
 
 /**
  * 短链接中台远程调用服务
@@ -50,4 +53,10 @@ public interface ShanLinkRemoteService {
      */
     @DeleteMapping("/api/shan-link/v1/link")
     Result<Void> deleteLink(@RequestParam("fullShortUrl") String fullShortUrl);
+
+    /**
+     * 查询短链接分组内数量
+     */
+    @GetMapping("/api/shan-link/v1/link/count")
+    Result<List<LinkGroupCountQueryRespDTO>> listGroupShortLinkCount(@RequestParam("gidList") List<String> gidList);
 }

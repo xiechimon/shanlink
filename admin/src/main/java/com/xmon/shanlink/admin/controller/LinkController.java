@@ -7,6 +7,7 @@ import com.xmon.shanlink.admin.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkUpdateReqDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkCreateRespDTO;
+import com.xmon.shanlink.admin.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkPageRespDTO;
 import com.xmon.shanlink.admin.remote.ShanLinkRemoteService;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 短链接后管控制层
@@ -64,5 +67,13 @@ public class LinkController {
     public Result<Void> deleteLink(@RequestParam("fullShortUrl") String fullShortUrl) {
         shortLinkRemoteService.deleteLink(fullShortUrl);
         return Results.success();
+    }
+
+    /**
+     * 查询短链接分组内数量
+     */
+    @GetMapping("/count")
+    public Result<List<LinkGroupCountQueryRespDTO>> listGroupShortLinkCount(@RequestParam("gidList") List<String> gidList) {
+        return Results.success(shortLinkRemoteService.listGroupShortLinkCount(gidList).getData());
     }
 }
