@@ -295,3 +295,34 @@ Gateway 鉴权后将用户信息注入请求头，下游服务通过 `UserTransm
 ```
 
 示例：`/api/shan-link/admin/v1/user/{username}`
+
+### 依赖版本管理
+
+所有依赖版本统一在根模块 `shanlink-all/pom.xml` 的 `<dependencyManagement>` 中声明，版本号提取为 `<properties>`：
+
+```xml
+<!-- 根 pom.xml -->
+<properties>
+    <jsoup.version>1.15.3</jsoup.version>
+</properties>
+
+<dependencyManagement>
+    <dependency>
+        <groupId>org.jsoup</groupId>
+        <artifactId>jsoup</artifactId>
+        <version>${jsoup.version}</version>
+    </dependency>
+</dependencyManagement>
+```
+
+子模块引用时**不写版本号**：
+
+```xml
+<!-- 子模块 pom.xml -->
+<dependency>
+    <groupId>org.jsoup</groupId>
+    <artifactId>jsoup</artifactId>
+</dependency>
+```
+
+Lombok 是全局依赖，直接声明在根 pom 的 `<dependencies>` 中，子模块无需引入。
