@@ -24,8 +24,8 @@ import java.util.List;
  * 短链接中台远程调用服务
  */
 @FeignClient(
-        name = "short-link-remote-service",
-        url = "${remote.project.url}",
+        name = "shan-link-remote-service",
+        url = "${shan-link.remote.project.url}",
         configuration = ShanLinkRemoteConfiguration.class
 )
 public interface ShanLinkRemoteService {
