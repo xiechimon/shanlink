@@ -11,6 +11,8 @@ import com.xmon.shanlink.project.common.convention.exception.ClientException;
 import com.xmon.shanlink.project.common.convention.exception.ServiceException;
 import com.xmon.shanlink.project.common.enums.LinkErrorCodeEnum;
 import com.xmon.shanlink.project.common.enums.VailDateTypeEnum;
+import com.xmon.shanlink.project.dao.entity.LinkGotoDO;
+import com.xmon.shanlink.project.dao.mapper.LinkGotoMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.SneakyThrows;
@@ -24,6 +26,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Date;
 import java.util.Objects;
+
 import com.xmon.shanlink.project.dao.entity.LinkDO;
 import com.xmon.shanlink.project.dao.mapper.LinkMapper;
 import com.xmon.shanlink.project.dto.req.LinkCreateReqDTO;
@@ -51,6 +54,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
 
     private final RBloomFilter<String> shortUriCreateCachePenetrationBloomFilter;
     private final LinkMapper linkMapper;
+    private final LinkGotoMapper linkGotoMapper;
 
     @Value("${shan-link.domain.default}")
     private String createShortLinkDefaultDomain;
@@ -82,8 +86,13 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 .fullShortUrl(fullShortUrl)
                 .favicon(getFavicon(requestParam.getOriginUrl()))
                 .build();
+        LinkGotoDO linkGotoDO = LinkGotoDO.builder()
+                .gid(requestParam.getGid())
+                .fullShortUrl(fullShortUrl)
+                .build();
         try {
             save(linkDO);
+            linkGotoMapper.insert(linkGotoDO);
         } catch (DuplicateKeyException e) {
             // 判断是否存在 BF，不存在则添加
             if (!shortUriCreateCachePenetrationBloomFilter.contains(fullShortUrl)) {
@@ -141,10 +150,10 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     public void updateLink(LinkUpdateReqDTO requestParam) {
         // 判断原始短链是否存在
         LinkDO existing = getOne(Wrappers.lambdaQuery(LinkDO.class)
-                .eq(LinkDO::getGid, requestParam.getOriginGid())
-                .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
-                .eq(LinkDO::getDelFlag, 0)
-                .eq(LinkDO::getDelTime, 0L));
+                                         .eq(LinkDO::getGid, requestParam.getOriginGid())
+                                         .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
+                                         .eq(LinkDO::getDelFlag, 0)
+                                         .eq(LinkDO::getDelTime, 0L));
         if (existing == null) {
             throw new ClientException(LinkErrorCodeEnum.LINK_NOT_EXIST);
         }
@@ -167,18 +176,20 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
 
         // 如果原始短链和新的短链属于同一分组，直接更新；否则删除原始短链并新增新的短链
         if (Objects.equals(requestParam.getOriginGid(), requestParam.getGid())) {
-            update(linkDO, Wrappers.lambdaUpdate(LinkDO.class)
-                    .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
-                    .eq(LinkDO::getGid, requestParam.getOriginGid())
-                    .eq(LinkDO::getDelFlag, 0)
-                    .eq(LinkDO::getDelTime, 0L)
-                    .set(Objects.equals(requestParam.getValidDateType(), VailDateTypeEnum.PERMANENT.getType()), LinkDO::getValidDate, null));
+            update(
+                    linkDO, Wrappers.lambdaUpdate(LinkDO.class)
+                            .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
+                            .eq(LinkDO::getGid, requestParam.getOriginGid())
+                            .eq(LinkDO::getDelFlag, 0)
+                            .eq(LinkDO::getDelTime, 0L)
+                            .set(Objects.equals(requestParam.getValidDateType(), VailDateTypeEnum.PERMANENT.getType()), LinkDO::getValidDate, null)
+            );
         } else {
             remove(Wrappers.lambdaQuery(LinkDO.class)
-                    .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
-                    .eq(LinkDO::getGid, requestParam.getOriginGid())
-                    .eq(LinkDO::getDelFlag, 0)
-                    .eq(LinkDO::getDelTime, 0L));
+                           .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
+                           .eq(LinkDO::getGid, requestParam.getOriginGid())
+                           .eq(LinkDO::getDelFlag, 0)
+                           .eq(LinkDO::getDelTime, 0L));
             save(linkDO);
         }
     }
@@ -195,7 +206,6 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
 
     @Override
     public List<LinkGroupCountQueryRespDTO> listGroupShortLinkCount(List<String> requestParam) {
-
         return linkMapper.listGroupShortLinkCount(requestParam);
     }
 
@@ -204,17 +214,25 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     public void restoreUrl(String shortUri, HttpServletRequest request, HttpServletResponse response) {
         String fullShortUrl = createShortLinkDefaultDomain + "/" + shortUri;
 
+        LambdaQueryWrapper<LinkGotoDO> queryWrapper = Wrappers.lambdaQuery(LinkGotoDO.class)
+                .eq(LinkGotoDO::getFullShortUrl, fullShortUrl);
+        LinkGotoDO linkGotoDO = linkGotoMapper.selectOne(queryWrapper);
+        if (linkGotoDO == null) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
         LinkDO linkDO = getOne(Wrappers.lambdaQuery(LinkDO.class)
-                                    .eq(LinkDO::getFullShortUrl, fullShortUrl)
-                                    .eq(LinkDO::getEnableStatus, 0)
-                                    .eq(LinkDO::getDelFlag, 0)
-                                    .eq(LinkDO::getDelTime, 0L));
+                                       .eq(LinkDO::getFullShortUrl, fullShortUrl)
+                                       .eq(LinkDO::getEnableStatus, 0)
+                                       .eq(LinkDO::getDelFlag, 0)
+                                       .eq(LinkDO::getDelTime, 0L));
 
         if (linkDO == null) {
             throw new ClientException(LinkErrorCodeEnum.LINK_NOT_EXIST);
         }
         // 有效期校验
-        if(Objects.equals(linkDO.getValidDateType(), VailDateTypeEnum.CUSTOM.getType())
+        if (Objects.equals(linkDO.getValidDateType(), VailDateTypeEnum.CUSTOM.getType())
                 && linkDO.getValidDate().before(new Date())) {
             throw new ClientException(LinkErrorCodeEnum.LINK_EXPIRED);
         }
