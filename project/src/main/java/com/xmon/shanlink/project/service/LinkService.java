@@ -9,6 +9,8 @@ import com.xmon.shanlink.project.dto.req.LinkUpdateReqDTO;
 import com.xmon.shanlink.project.dto.resp.LinkCreateRespDTO;
 import com.xmon.shanlink.project.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.project.dto.resp.LinkPageRespDTO;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
 
@@ -54,4 +56,13 @@ public interface LinkService extends IService<LinkDO> {
      * @return 查询短链接分组内数量响应
      */
     List<LinkGroupCountQueryRespDTO> listGroupShortLinkCount(List<String> requestParam);
+
+    /**
+     * 短链接跳转
+     *
+     * @param shortUri 短链接后缀
+     * @param request  HTTP 请求
+     * @param response HTTP 响应
+     */
+    void restoreUrl(String shortUri, HttpServletRequest request, HttpServletResponse response);
 }

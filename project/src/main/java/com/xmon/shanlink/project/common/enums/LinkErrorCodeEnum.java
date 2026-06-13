@@ -6,6 +6,8 @@ public enum LinkErrorCodeEnum implements IErrorCode {
 
     LINK_NOT_EXIST("A000400", "短链接记录不存在"),
 
+    LINK_EXPIRED("A000401", "短链接已过期"),
+
     LINK_SAVE_ERROR("B000400", "短链接新增失败");
 
     private final String code;

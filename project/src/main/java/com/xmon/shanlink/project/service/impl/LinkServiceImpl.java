@@ -11,6 +11,9 @@ import com.xmon.shanlink.project.common.convention.exception.ClientException;
 import com.xmon.shanlink.project.common.convention.exception.ServiceException;
 import com.xmon.shanlink.project.common.enums.LinkErrorCodeEnum;
 import com.xmon.shanlink.project.common.enums.VailDateTypeEnum;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.SneakyThrows;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.jsoup.Jsoup;
@@ -19,6 +22,7 @@ import org.jsoup.nodes.Element;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Date;
 import java.util.Objects;
 import com.xmon.shanlink.project.dao.entity.LinkDO;
 import com.xmon.shanlink.project.dao.mapper.LinkMapper;
@@ -193,6 +197,28 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     public List<LinkGroupCountQueryRespDTO> listGroupShortLinkCount(List<String> requestParam) {
 
         return linkMapper.listGroupShortLinkCount(requestParam);
+    }
+
+    @SneakyThrows
+    @Override
+    public void restoreUrl(String shortUri, HttpServletRequest request, HttpServletResponse response) {
+        String fullShortUrl = createShortLinkDefaultDomain + "/" + shortUri;
+
+        LinkDO linkDO = getOne(Wrappers.lambdaQuery(LinkDO.class)
+                                    .eq(LinkDO::getFullShortUrl, fullShortUrl)
+                                    .eq(LinkDO::getEnableStatus, 0)
+                                    .eq(LinkDO::getDelFlag, 0)
+                                    .eq(LinkDO::getDelTime, 0L));
+
+        if (linkDO == null) {
+            throw new ClientException(LinkErrorCodeEnum.LINK_NOT_EXIST);
+        }
+        // 有效期校验
+        if(Objects.equals(linkDO.getValidDateType(), VailDateTypeEnum.CUSTOM.getType())
+                && linkDO.getValidDate().before(new Date())) {
+            throw new ClientException(LinkErrorCodeEnum.LINK_EXPIRED);
+        }
+        response.sendRedirect(linkDO.getOriginUrl());
     }
 
     /**
