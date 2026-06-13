@@ -13,6 +13,12 @@ import com.xmon.shanlink.project.common.enums.LinkErrorCodeEnum;
 import com.xmon.shanlink.project.common.enums.VailDateTypeEnum;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Objects;
 import com.xmon.shanlink.project.dao.entity.LinkDO;
 import com.xmon.shanlink.project.dao.mapper.LinkMapper;
@@ -61,7 +67,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 .validDate(requestParam.getValidDate())
                 .describe(requestParam.getDescribe())
                 .createdType(requestParam.getCreatedType())
-                .domain(requestParam.getDomain())
+                .domain(createShortLinkDefaultDomain)
                 .clickNum(0)
                 .enableStatus(0)
                 .totalPv(0)
@@ -70,6 +76,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 .delTime(0L)
                 .shortUri(shortUri)
                 .fullShortUrl(fullShortUrl)
+                .favicon(getFavicon(requestParam.getOriginUrl()))
                 .build();
         try {
             save(linkDO);
@@ -86,6 +93,26 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         return BeanUtil.toBean(linkDO, LinkCreateRespDTO.class);
     }
 
+    private String getFavicon(String originUrl) {
+        try {
+            URL targetUrl = new URL(originUrl);
+            HttpURLConnection connection = (HttpURLConnection) targetUrl.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(3000);
+            connection.setReadTimeout(3000);
+            connection.connect();
+            if (HttpURLConnection.HTTP_OK == connection.getResponseCode()) {
+                Document document = Jsoup.connect(originUrl).timeout(3000).get();
+                Element faviconLink = document.select("link[rel~=(?i)^(shortcut )?icon]").first();
+                if (faviconLink != null) {
+                    return faviconLink.attr("abs:href");
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
     @Override
     public IPage<LinkPageRespDTO> pageLink(LinkPageReqDTO requestParam) {
         LambdaQueryWrapper<LinkDO> queryWrapper = Wrappers.lambdaQuery(LinkDO.class)
@@ -96,7 +123,13 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 .orderByDesc(LinkDO::getCreateTime);
 
         IPage<LinkDO> page = page(requestParam, queryWrapper);
-        return page.convert(each -> BeanUtil.toBean(each, LinkPageRespDTO.class));
+        return page.convert(each -> {
+            LinkPageRespDTO dto = BeanUtil.toBean(each, LinkPageRespDTO.class);
+            dto.setTodayPv(0);
+            dto.setTodayUv(0);
+            dto.setTodayUip(0);
+            return dto;
+        });
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -117,7 +150,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 .gid(requestParam.getGid())
                 .originUrl(requestParam.getOriginUrl())
                 .validDateType(requestParam.getValidDateType())
-                .validDate(requestParam.getValidDate())
+                .validDate(Objects.equals(requestParam.getValidDateType(), VailDateTypeEnum.PERMANENT.getType()) ? null : requestParam.getValidDate())
                 .describe(requestParam.getDescribe())
                 .domain(existing.getDomain())
                 .shortUri(existing.getShortUri())
