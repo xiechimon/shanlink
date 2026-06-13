@@ -7,7 +7,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xmon.shanlink.project.common.convention.exception.ClientException;
 import com.xmon.shanlink.project.common.convention.exception.ServiceException;
+import com.xmon.shanlink.project.common.enums.LinkErrorCodeEnum;
+import com.xmon.shanlink.project.common.enums.VailDateTypeEnum;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Objects;
 import com.xmon.shanlink.project.dao.entity.LinkDO;
 import com.xmon.shanlink.project.dao.mapper.LinkMapper;
 import com.xmon.shanlink.project.dto.req.LinkCreateReqDTO;
@@ -93,17 +99,51 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         return page.convert(each -> BeanUtil.toBean(each, LinkPageRespDTO.class));
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void updateLink(LinkUpdateReqDTO requestParam) {
-        update(Wrappers.lambdaUpdate(LinkDO.class)
-                       .set(LinkDO::getOriginUrl, requestParam.getOriginUrl())
-                       .set(LinkDO::getValidDateType, requestParam.getValidDateType())
-                       .set(LinkDO::getValidDate, requestParam.getValidDate())
-                       .set(LinkDO::getDescribe, requestParam.getDescribe())
-                       .eq(LinkDO::getGid, requestParam.getGid())
-                       .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
-                       .eq(LinkDO::getDelFlag, 0)
-                       .eq(LinkDO::getDelTime, 0L));
+        // 判断原始短链是否存在
+        LinkDO existing = getOne(Wrappers.lambdaQuery(LinkDO.class)
+                .eq(LinkDO::getGid, requestParam.getOriginGid())
+                .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
+                .eq(LinkDO::getDelFlag, 0)
+                .eq(LinkDO::getDelTime, 0L));
+        if (existing == null) {
+            throw new ClientException(LinkErrorCodeEnum.LINK_NOT_EXIST);
+        }
+
+        // 构建新的短链对象
+        LinkDO linkDO = LinkDO.builder()
+                .gid(requestParam.getGid())
+                .originUrl(requestParam.getOriginUrl())
+                .validDateType(requestParam.getValidDateType())
+                .validDate(requestParam.getValidDate())
+                .describe(requestParam.getDescribe())
+                .domain(existing.getDomain())
+                .shortUri(existing.getShortUri())
+                .clickNum(existing.getClickNum())
+                .favicon(existing.getFavicon())
+                .createdType(existing.getCreatedType())
+                .enableStatus(existing.getEnableStatus())
+                .delTime(0L)
+                .build();
+
+        // 如果原始短链和新的短链属于同一分组，直接更新；否则删除原始短链并新增新的短链
+        if (Objects.equals(requestParam.getOriginGid(), requestParam.getGid())) {
+            update(linkDO, Wrappers.lambdaUpdate(LinkDO.class)
+                    .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
+                    .eq(LinkDO::getGid, requestParam.getOriginGid())
+                    .eq(LinkDO::getDelFlag, 0)
+                    .eq(LinkDO::getDelTime, 0L)
+                    .set(Objects.equals(requestParam.getValidDateType(), VailDateTypeEnum.PERMANENT.getType()), LinkDO::getValidDate, null));
+        } else {
+            remove(Wrappers.lambdaQuery(LinkDO.class)
+                    .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
+                    .eq(LinkDO::getGid, requestParam.getOriginGid())
+                    .eq(LinkDO::getDelFlag, 0)
+                    .eq(LinkDO::getDelTime, 0L));
+            save(linkDO);
+        }
     }
 
     @Override
