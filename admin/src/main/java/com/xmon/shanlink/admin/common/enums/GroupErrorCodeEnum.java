@@ -11,6 +11,8 @@ public enum GroupErrorCodeEnum implements IErrorCode {
 
     GROUP_NOT_EXIST("A000301", "分组不存在"),
 
+    GROUP_MAX_NUM("A000302", "分组数量已达上限"),
+
     GROUP_SAVE_ERROR("B000300", "分组新增失败");
 
     private final String code;

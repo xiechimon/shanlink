@@ -16,6 +16,7 @@ import com.xmon.shanlink.admin.service.GroupService;
 import com.xmon.shanlink.admin.toolkit.RandomGenerator;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +31,9 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
 
     private final RBloomFilter<String> gidRegisterCachePenetrationBloomFilter;
 
+    @Value("${shan-link.group.max-num}")
+    private Integer groupMaxNum;
+
     @Override
     public void saveGroup(String name) {
         saveGroup(name, UserContext.getUsername());
@@ -38,19 +42,27 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
     @Override
     public void saveGroup(String name, String username) {
         // TODO 分布式锁防止同一用户重复提交创建分组请求
+        List<GroupDO> groupDOList = list(Wrappers.lambdaQuery(GroupDO.class)
+                                                 .eq(GroupDO::getUsername, username)
+                                                 .eq(GroupDO::getDelFlag, 0));
+
+        // 校验同一用户分组数量是否超过上限
+        if (groupDOList.size() >= groupMaxNum) {
+            throw new ClientException(GroupErrorCodeEnum.GROUP_MAX_NUM);
+        }
         // 校验同一用户分组名是否重复
-        LambdaQueryWrapper<GroupDO> queryWrapper = Wrappers.lambdaQuery(GroupDO.class)
-                .eq(GroupDO::getUsername, username)
-                .eq(GroupDO::getName, name)
-                .eq(GroupDO::getDelFlag, 0);
-        if (getOne(queryWrapper) != null) {
+        if (groupDOList.stream().anyMatch(g -> g.getName().equals(name))) {
             throw new ClientException(GroupErrorCodeEnum.GROUP_NAME_EXIST);
         }
+
         // 生成唯一 gid
         String gid;
         do {
             gid = RandomGenerator.generateRandom();
+
+
         } while (gidRegisterCachePenetrationBloomFilter.contains(gid));
+
         // 新增分组
         GroupDO groupDO = GroupDO.builder()
                 .name(name)
@@ -92,9 +104,9 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
     @Override
     public void sortGroup(List<GroupSortReqDTO> requestParam) {
         requestParam.forEach(item -> update(Wrappers.lambdaUpdate(GroupDO.class)
-                .set(GroupDO::getSortOrder, item.getSortOrder())
-                .eq(GroupDO::getGid, item.getGid())
-                .eq(GroupDO::getUsername, UserContext.getUsername())));
+                                                    .set(GroupDO::getSortOrder, item.getSortOrder())
+                                                    .eq(GroupDO::getGid, item.getGid())
+                                                    .eq(GroupDO::getUsername, UserContext.getUsername())));
     }
 
     @Override
