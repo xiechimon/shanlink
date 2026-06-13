@@ -17,6 +17,7 @@ import com.xmon.shanlink.admin.dto.req.UserRegisterReqDTO;
 import com.xmon.shanlink.admin.dto.req.UserUpdateReqDTO;
 import com.xmon.shanlink.admin.dto.resp.UserLoginRespDTO;
 import com.xmon.shanlink.admin.dto.resp.UserRespDTO;
+import com.xmon.shanlink.admin.service.GroupService;
 import com.xmon.shanlink.admin.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
@@ -43,6 +44,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
     private final RBloomFilter<String> userRegisterCachePenetrationBloomFilter;
     private final RedissonClient redissonClient;
     private final StringRedisTemplate stringRedisTemplate;
+    private final GroupService groupService;
 
     @Override
     public UserRespDTO getUserByUsername(String username) {
@@ -74,6 +76,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         }
         try {
             save(BeanUtil.toBean(requestParam, UserDO.class));
+            groupService.saveGroup("默认分组", requestParam.getUsername());
             userRegisterCachePenetrationBloomFilter.add(requestParam.getUsername());
         } catch (DuplicateKeyException e) {
             throw new ClientException(UserErrorCodeEnum.USER_EXIST);

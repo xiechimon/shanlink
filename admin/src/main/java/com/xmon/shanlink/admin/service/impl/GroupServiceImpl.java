@@ -32,10 +32,15 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
 
     @Override
     public void saveGroup(String name) {
+        saveGroup(name, UserContext.getUsername());
+    }
+
+    @Override
+    public void saveGroup(String name, String username) {
         // TODO 分布式锁防止同一用户重复提交创建分组请求
         // 校验同一用户分组名是否重复
         LambdaQueryWrapper<GroupDO> queryWrapper = Wrappers.lambdaQuery(GroupDO.class)
-                .eq(GroupDO::getUsername, UserContext.getUsername())
+                .eq(GroupDO::getUsername, username)
                 .eq(GroupDO::getName, name)
                 .eq(GroupDO::getDelFlag, 0);
         if (getOne(queryWrapper) != null) {
@@ -50,7 +55,7 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
         GroupDO groupDO = GroupDO.builder()
                 .name(name)
                 .gid(gid)
-                .username(UserContext.getUsername())
+                .username(username)
                 .sortOrder(0)
                 .build();
         try {

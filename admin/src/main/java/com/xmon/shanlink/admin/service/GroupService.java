@@ -14,11 +14,19 @@ import java.util.List;
 public interface GroupService extends IService<GroupDO> {
 
     /**
-     * 新建短链接分组
+     * 新建短链接分组（当前登录用户）
      *
      * @param name 分组名
      */
     void saveGroup(String name);
+
+    /**
+     * 新建短链接分组（指定用户，用于注册时创建默认分组）
+     *
+     * @param name     分组名
+     * @param username 用户名
+     */
+    void saveGroup(String name, String username);
 
     /**
      * 查询用户分组集合
