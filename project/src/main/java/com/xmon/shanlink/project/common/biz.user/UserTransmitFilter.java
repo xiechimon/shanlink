@@ -38,8 +38,15 @@ public class UserTransmitFilter implements Filter {
         String uri = httpServletRequest.getRequestURI();
         boolean isPublicPath = uri.equals("/api/shan-link/admin/v1/user/login") ||
                 uri.equals("/api/shan-link/admin/v1/user/register") ||
-                uri.equals("/api/shan-link/admin/v1/user/check-username");
+                uri.equals("/api/shan-link/admin/v1/user/check-username") ||
+                (!uri.startsWith("/api/") && uri.length() > 1);
         if (!isPublicPath) {
+            if (StrUtil.isBlank(username) || StrUtil.isBlank(token)) {
+                httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                httpServletResponse.setContentType("application/json;charset=UTF-8");
+                httpServletResponse.getWriter().write(JSON.toJSONString(Results.failure(UserErrorCodeEnum.USER_NOT_LOGIN.code(), UserErrorCodeEnum.USER_NOT_LOGIN.message())));
+                return;
+            }
             String userJson = (String) stringRedisTemplate.opsForHash().get(USER_LOGIN_KEY + username, token);
             if (StrUtil.isBlank(userJson)) {
                 httpServletResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
