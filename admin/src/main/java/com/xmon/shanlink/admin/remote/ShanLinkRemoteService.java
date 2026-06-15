@@ -2,6 +2,7 @@ package com.xmon.shanlink.admin.remote;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xmon.shanlink.admin.common.convention.result.Result;
+import com.xmon.shanlink.admin.common.convention.result.Results;
 import com.xmon.shanlink.admin.remote.config.ShanLinkRemoteConfiguration;
 import com.xmon.shanlink.admin.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkPageReqDTO;
@@ -59,4 +60,11 @@ public interface ShanLinkRemoteService {
      */
     @GetMapping("/api/shan-link/v1/link/count")
     Result<List<LinkGroupCountQueryRespDTO>> listGroupShortLinkCount(@RequestParam("gidList") List<String> gidList);
+
+    /**
+     * 根据 URL 获取网站标题
+     */
+    @GetMapping("/api/shan-link/v1/title")
+    Result<String> getTitleByUrl(@RequestParam("url") String url);
+
 }
