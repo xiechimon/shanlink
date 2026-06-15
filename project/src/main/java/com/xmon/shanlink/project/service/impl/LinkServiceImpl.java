@@ -3,8 +3,10 @@ package com.xmon.shanlink.project.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.text.StrBuilder;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xmon.shanlink.project.common.convention.exception.ClientException;
@@ -13,9 +15,13 @@ import com.xmon.shanlink.project.common.enums.LinkErrorCodeEnum;
 import com.xmon.shanlink.project.common.enums.VailDateTypeEnum;
 import com.xmon.shanlink.project.dao.entity.LinkGotoDO;
 import com.xmon.shanlink.project.dao.mapper.LinkGotoMapper;
+import com.xmon.shanlink.project.toolkit.LinkUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.SneakyThrows;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.jsoup.Jsoup;
@@ -44,6 +50,10 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+import static com.xmon.shanlink.project.common.constant.RedisCacheConstant.*;
 
 /**
  * 短链接接口实现层
@@ -55,6 +65,8 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     private final RBloomFilter<String> shortUriCreateCachePenetrationBloomFilter;
     private final LinkMapper linkMapper;
     private final LinkGotoMapper linkGotoMapper;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final RedissonClient redissonClient;
 
     @Value("${shan-link.domain.default}")
     private String createShortLinkDefaultDomain;
@@ -212,31 +224,86 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     @SneakyThrows
     @Override
     public void restoreUrl(String shortUri, HttpServletRequest request, HttpServletResponse response) {
-        String fullShortUrl = createShortLinkDefaultDomain + "/" + shortUri;
+        String serverName = request.getServerName();
+        String serverPort = Optional.of(request.getServerPort())
+                .filter(each -> !Objects.equals(each, 80))
+                .map(String::valueOf)
+                .map(each -> ":" + each)
+                .orElse("");
+        String fullShortUrl = serverName + serverPort + "/" + shortUri;
+        String gotoShortLinkKey = String.format(GOTO_SHORT_LINK_KEY, fullShortUrl);
+        String gotoIsNullShortLinkKey = String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl);
 
-        LambdaQueryWrapper<LinkGotoDO> queryWrapper = Wrappers.lambdaQuery(LinkGotoDO.class)
-                .eq(LinkGotoDO::getFullShortUrl, fullShortUrl);
-        LinkGotoDO linkGotoDO = linkGotoMapper.selectOne(queryWrapper);
-        if (linkGotoDO == null) {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+        // 1. 正向缓存命中直接跳转，热点链接走这里
+        String originalLink = stringRedisTemplate.opsForValue().get(gotoShortLinkKey);
+        if (StringUtils.isNotBlank(originalLink)) {
+            response.sendRedirect(originalLink);
             return;
         }
 
-        LinkDO linkDO = getOne(Wrappers.lambdaQuery(LinkDO.class)
-                                       .eq(LinkDO::getFullShortUrl, fullShortUrl)
-                                       .eq(LinkDO::getEnableStatus, 0)
-                                       .eq(LinkDO::getDelFlag, 0)
-                                       .eq(LinkDO::getDelTime, 0L));
+        // 2. BF 拦截不存在的短链，防缓存穿透
+        if (!shortUriCreateCachePenetrationBloomFilter.contains(fullShortUrl)) {
+            response.sendRedirect("/page/notfound");
+            return;
+        }
 
-        if (linkDO == null) {
-            throw new ClientException(LinkErrorCodeEnum.LINK_NOT_EXIST);
+        // 3. 空值缓存拦截已删除/过期的短链（BF 无法感知删除）
+        String gotoIsNullShortLink = stringRedisTemplate.opsForValue().get(gotoIsNullShortLinkKey);
+        if (StrUtil.isNotBlank(gotoIsNullShortLink)) {
+            response.sendRedirect("/page/notfound");
+            return;
         }
-        // 有效期校验
-        if (Objects.equals(linkDO.getValidDateType(), VailDateTypeEnum.CUSTOM.getType())
-                && linkDO.getValidDate().before(new Date())) {
-            throw new ClientException(LinkErrorCodeEnum.LINK_EXPIRED);
+
+        // 4. 缓存未命中，加锁回源，防缓存击穿
+        RLock lock = redissonClient.getLock(String.format(LOCK_GOTO_SHORT_LINK_KEY, fullShortUrl));
+        lock.lock();
+        try {
+            // 双重检查，避免多个线程重复回源
+            originalLink = stringRedisTemplate.opsForValue().get(gotoShortLinkKey);
+            if (StringUtils.isNotBlank(originalLink)) {
+                response.sendRedirect(originalLink);
+                return;
+            }
+            gotoIsNullShortLink = stringRedisTemplate.opsForValue().get(gotoIsNullShortLinkKey);
+            if (StrUtil.isNotBlank(gotoIsNullShortLink)) {
+                response.sendRedirect("/page/notfound");
+                return;
+            }
+
+            // 查路由表获取 gid（t_link 按 gid 分片，查询必须带 gid）
+            LambdaQueryWrapper<LinkGotoDO> queryWrapper = Wrappers.lambdaQuery(LinkGotoDO.class)
+                    .eq(LinkGotoDO::getFullShortUrl, fullShortUrl);
+            LinkGotoDO linkGotoDO = linkGotoMapper.selectOne(queryWrapper);
+            if (linkGotoDO == null) {
+                stringRedisTemplate.opsForValue().set(gotoIsNullShortLinkKey, "-", 30, TimeUnit.MINUTES);
+                response.sendRedirect("/page/notfound");
+                return;
+            }
+
+            LinkDO linkDO = getOne(Wrappers.lambdaQuery(LinkDO.class)
+                                           .eq(LinkDO::getGid, linkGotoDO.getGid())
+                                           .eq(LinkDO::getFullShortUrl, fullShortUrl)
+                                           .eq(LinkDO::getEnableStatus, 0)
+                                           .eq(LinkDO::getDelFlag, 0)
+                                           .eq(LinkDO::getDelTime, 0L));
+            // 短链不存在或已过期，写空值缓存避免后续重复回源
+            if (linkDO == null || (linkDO.getValidDate() != null && linkDO.getValidDate().before(new Date()))) {
+                stringRedisTemplate.opsForValue().set(gotoIsNullShortLinkKey, "-", 30, TimeUnit.MINUTES);
+                response.sendRedirect("/page/notfound");
+                return;
+            }
+
+            stringRedisTemplate.opsForValue().set(
+                    gotoShortLinkKey,
+                    linkDO.getOriginUrl(),
+                    LinkUtil.getLinkCacheValidTime(linkDO.getValidDate()), TimeUnit.MILLISECONDS
+            );
+            response.sendRedirect(linkDO.getOriginUrl());
+        } finally {
+            lock.unlock();
         }
-        response.sendRedirect(linkDO.getOriginUrl());
+
+
     }
 
     /**

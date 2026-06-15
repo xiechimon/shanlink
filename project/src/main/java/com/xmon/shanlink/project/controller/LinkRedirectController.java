@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequiredArgsConstructor
-public class ShortLinkRedirectController {
+public class LinkRedirectController {
 
     private final LinkService linkService;
 
