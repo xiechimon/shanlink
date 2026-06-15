@@ -71,6 +71,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     @Value("${shan-link.domain.default}")
     private String createShortLinkDefaultDomain;
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public LinkCreateRespDTO createLink(LinkCreateReqDTO requestParam) {
         // 生成短链接 URI
@@ -79,7 +80,8 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 .append("/")
                 .append(shortUri)
                 .toString();
-        // 构建 LinkDO 对象并保存
+
+        // 构建 LinkDO & LinkGotoDO
         LinkDO linkDO = LinkDO.builder()
                 .gid(requestParam.getGid())
                 .originUrl(requestParam.getOriginUrl())
@@ -103,6 +105,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 .fullShortUrl(fullShortUrl)
                 .build();
         try {
+            // 保存到 DB
             save(linkDO);
             linkGotoMapper.insert(linkGotoDO);
         } catch (DuplicateKeyException e) {
@@ -112,30 +115,18 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             }
             throw new ServiceException(String.format("短链接：%s 已存在，请稍后再试", fullShortUrl));
         }
+
+        // 缓存预热
+        stringRedisTemplate.opsForValue().set(
+                String.format(GOTO_SHORT_LINK_KEY, fullShortUrl),
+                requestParam.getOriginUrl(),
+                LinkUtil.getLinkCacheValidTime(requestParam.getValidDate()), TimeUnit.MILLISECONDS
+        );
+
         // 新建短链接添加到 BF，防止缓存穿透
         shortUriCreateCachePenetrationBloomFilter.add(fullShortUrl);
         // 返回创建结果
         return BeanUtil.toBean(linkDO, LinkCreateRespDTO.class);
-    }
-
-    private String getFavicon(String originUrl) {
-        try {
-            URL targetUrl = new URL(originUrl);
-            HttpURLConnection connection = (HttpURLConnection) targetUrl.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setConnectTimeout(3000);
-            connection.setReadTimeout(3000);
-            connection.connect();
-            if (HttpURLConnection.HTTP_OK == connection.getResponseCode()) {
-                Document document = Jsoup.connect(originUrl).timeout(3000).get();
-                Element faviconLink = document.select("link[rel~=(?i)^(shortcut )?icon]").first();
-                if (faviconLink != null) {
-                    return faviconLink.attr("abs:href");
-                }
-            }
-        } catch (Exception ignored) {
-        }
-        return null;
     }
 
     @Override
@@ -308,6 +299,9 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
 
     /**
      * 短链接 URI 生成
+     *
+     * @param originUrl 原始链接
+     * @return 短链接 URI
      */
     private String generateShortUri(String originUrl) {
         int customGenerateCount = 0;
@@ -324,5 +318,31 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             customGenerateCount++;
         }
         return shortUri;
+    }
+
+    /**
+     * 获取图标
+     *
+     * @param originUrl 原始链接
+     * @return 图标链接
+     */
+    private String getFavicon(String originUrl) {
+        try {
+            URL targetUrl = new URL(originUrl);
+            HttpURLConnection connection = (HttpURLConnection) targetUrl.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(3000);
+            connection.setReadTimeout(3000);
+            connection.connect();
+            if (HttpURLConnection.HTTP_OK == connection.getResponseCode()) {
+                Document document = Jsoup.connect(originUrl).timeout(3000).get();
+                Element faviconLink = document.select("link[rel~=(?i)^(shortcut )?icon]").first();
+                if (faviconLink != null) {
+                    return faviconLink.attr("abs:href");
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 }
