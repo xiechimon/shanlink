@@ -9,6 +9,7 @@ import com.xmon.shanlink.admin.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkUpdateReqDTO;
 import com.xmon.shanlink.admin.dto.req.RecycleBinPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.RecycleBinRecoverReqDTO;
+import com.xmon.shanlink.admin.dto.req.RecycleBinRemoveReqDTO;
 import com.xmon.shanlink.admin.dto.req.RecycleBinSaveReqDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkCreateRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkGroupCountQueryRespDTO;
@@ -82,6 +83,12 @@ public interface ShanLinkRemoteService {
      */
     @PostMapping("/api/shan-link/v1/recycle-bin/recover")
     Result<Void> recoverRecycleBin(@RequestBody RecycleBinRecoverReqDTO requestParam);
+
+    /**
+     * 移除短链接
+     */
+    @PostMapping("/api/shan-link/v1/recycle-bin/remove")
+    Result<Void> removeRecycleBin(@RequestBody RecycleBinRemoveReqDTO requestParam);
 
     /**
      * 分页查询回收站短链接

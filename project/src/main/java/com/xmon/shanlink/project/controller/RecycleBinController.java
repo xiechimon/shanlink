@@ -5,6 +5,7 @@ import com.xmon.shanlink.project.common.convention.result.Result;
 import com.xmon.shanlink.project.common.convention.result.Results;
 import com.xmon.shanlink.project.dto.req.RecycleBinPageReqDTO;
 import com.xmon.shanlink.project.dto.req.RecycleBinRecoverReqDTO;
+import com.xmon.shanlink.project.dto.req.RecycleBinRemoveReqDTO;
 import com.xmon.shanlink.project.dto.req.RecycleBinSaveReqDTO;
 import com.xmon.shanlink.project.dto.resp.LinkPageRespDTO;
 import com.xmon.shanlink.project.service.RecycleBinService;
@@ -48,6 +49,15 @@ public class RecycleBinController {
     @PostMapping("/recover")
     public Result<Void> recoverRecycleBin(@RequestBody RecycleBinRecoverReqDTO requestParam) {
         recycleBinService.recoverRecycleBin(requestParam);
+        return Results.success();
+    }
+
+    /**
+     * 移除短链接
+     */
+    @PostMapping("/remove")
+    public Result<Void> removeRecycleBin(@RequestBody RecycleBinRemoveReqDTO requestParam) {
+        recycleBinService.removeRecycleBin(requestParam);
         return Results.success();
     }
 }

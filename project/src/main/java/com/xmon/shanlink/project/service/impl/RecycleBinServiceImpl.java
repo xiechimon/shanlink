@@ -10,6 +10,7 @@ import com.xmon.shanlink.project.dao.entity.LinkDO;
 import com.xmon.shanlink.project.dao.mapper.LinkMapper;
 import com.xmon.shanlink.project.dto.req.RecycleBinPageReqDTO;
 import com.xmon.shanlink.project.dto.req.RecycleBinRecoverReqDTO;
+import com.xmon.shanlink.project.dto.req.RecycleBinRemoveReqDTO;
 import com.xmon.shanlink.project.dto.req.RecycleBinSaveReqDTO;
 import com.xmon.shanlink.project.dto.resp.LinkPageRespDTO;
 import com.xmon.shanlink.project.service.RecycleBinService;
@@ -57,6 +58,17 @@ public class RecycleBinServiceImpl extends ServiceImpl<LinkMapper, LinkDO> imple
                 .build();
         baseMapper.update(linkDO, updateWrapper);
         stringRedisTemplate.delete(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, requestParam.getFullShortUrl()));
+    }
+
+    @Override
+    public void removeRecycleBin(RecycleBinRemoveReqDTO requestParam) {
+        LambdaUpdateWrapper<LinkDO> updateWrapper = Wrappers.lambdaUpdate(LinkDO.class)
+                .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
+                .eq(LinkDO::getGid, requestParam.getGid())
+                .eq(LinkDO::getEnableStatus, 1)
+                .eq(LinkDO::getDelFlag, 0)
+                .set(LinkDO::getDelFlag, 1);
+        baseMapper.update(null, updateWrapper);
     }
 
     @Override
