@@ -15,10 +15,12 @@ import com.xmon.shanlink.project.common.enums.LinkErrorCodeEnum;
 import com.xmon.shanlink.project.common.enums.VailDateTypeEnum;
 import com.xmon.shanlink.project.dao.entity.LinkGotoDO;
 import com.xmon.shanlink.project.dao.mapper.LinkGotoMapper;
+import com.xmon.shanlink.project.dto.resp.*;
 import com.xmon.shanlink.project.toolkit.LinkUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -35,12 +37,10 @@ import java.util.Objects;
 
 import com.xmon.shanlink.project.dao.entity.LinkDO;
 import com.xmon.shanlink.project.dao.mapper.LinkMapper;
+import com.xmon.shanlink.project.dto.req.LinkBatchCreateReqDTO;
 import com.xmon.shanlink.project.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.project.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.project.dto.req.LinkUpdateReqDTO;
-import com.xmon.shanlink.project.dto.resp.LinkCreateRespDTO;
-import com.xmon.shanlink.project.dto.resp.LinkGroupCountQueryRespDTO;
-import com.xmon.shanlink.project.dto.resp.LinkPageRespDTO;
 import com.xmon.shanlink.project.service.LinkService;
 import com.xmon.shanlink.project.toolkit.HashUtil;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +49,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -58,6 +59,7 @@ import static com.xmon.shanlink.project.common.constant.RedisCacheConstant.*;
 /**
  * 短链接接口实现层
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements LinkService {
@@ -148,15 +150,44 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         });
     }
 
+    @Override
+    public LinkBatchCreateRespDTO batchCreateLink(LinkBatchCreateReqDTO requestParam) {
+        List<String> originUrls = requestParam.getOriginUrls();
+        List<String> describes = requestParam.getDescribes();
+        List<LinkBaseInfoRespDTO> results = new ArrayList<>();
+
+        for (int i = 0; i < originUrls.size(); i++) {
+            String describe = describes != null && i < describes.size() ? describes.get(i) : null;
+            LinkCreateReqDTO createReq = BeanUtil.toBean(requestParam, LinkCreateReqDTO.class);
+            createReq.setOriginUrl(originUrls.get(i));
+            createReq.setDescribe(describe);
+            try {
+                LinkCreateRespDTO shortLink = createLink(createReq);
+                results.add(LinkBaseInfoRespDTO.builder()
+                        .originUrl(shortLink.getOriginUrl())
+                        .fullShortUrl(shortLink.getFullShortUrl())
+                        .describe(describe)
+                        .build());
+            } catch (Throwable ex) {
+                log.error("批量创建短链接失败，原始链接：{}，异常信息：{}", originUrls.get(i), ex.getMessage());
+            }
+        }
+
+        return LinkBatchCreateRespDTO.builder()
+                .total(results.size())
+                .baseLinkInfos(results)
+                .build();
+    }
+
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void updateLink(LinkUpdateReqDTO requestParam) {
         // 判断原始短链是否存在
         LinkDO existing = getOne(Wrappers.lambdaQuery(LinkDO.class)
-                                         .eq(LinkDO::getGid, requestParam.getOriginGid())
-                                         .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
-                                         .eq(LinkDO::getDelFlag, 0)
-                                         .eq(LinkDO::getDelTime, 0L));
+                .eq(LinkDO::getGid, requestParam.getOriginGid())
+                .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
+                .eq(LinkDO::getDelFlag, 0)
+                .eq(LinkDO::getDelTime, 0L));
         if (existing == null) {
             throw new ClientException(LinkErrorCodeEnum.LINK_NOT_EXIST);
         }
@@ -189,10 +220,10 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             );
         } else {
             remove(Wrappers.lambdaQuery(LinkDO.class)
-                           .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
-                           .eq(LinkDO::getGid, requestParam.getOriginGid())
-                           .eq(LinkDO::getDelFlag, 0)
-                           .eq(LinkDO::getDelTime, 0L));
+                    .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
+                    .eq(LinkDO::getGid, requestParam.getOriginGid())
+                    .eq(LinkDO::getDelFlag, 0)
+                    .eq(LinkDO::getDelTime, 0L));
             save(linkDO);
         }
     }
@@ -200,11 +231,11 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     @Override
     public void deleteLink(String fullShortUrl) {
         update(Wrappers.lambdaUpdate(LinkDO.class)
-                       .set(LinkDO::getDelFlag, 1)
-                       .set(LinkDO::getDelTime, System.currentTimeMillis())
-                       .eq(LinkDO::getFullShortUrl, fullShortUrl)
-                       .eq(LinkDO::getDelFlag, 0)
-                       .eq(LinkDO::getDelTime, 0L));
+                .set(LinkDO::getDelFlag, 1)
+                .set(LinkDO::getDelTime, System.currentTimeMillis())
+                .eq(LinkDO::getFullShortUrl, fullShortUrl)
+                .eq(LinkDO::getDelFlag, 0)
+                .eq(LinkDO::getDelTime, 0L));
     }
 
     @Override
@@ -266,20 +297,20 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                     .eq(LinkGotoDO::getFullShortUrl, fullShortUrl);
             LinkGotoDO linkGotoDO = linkGotoMapper.selectOne(queryWrapper);
             if (linkGotoDO == null) {
-                stringRedisTemplate.opsForValue().set(gotoIsNullShortLinkKey, "-", 30, TimeUnit.MINUTES);
+                stringRedisTemplate.opsForValue().set(gotoIsNullShortLinkKey, "-", GOTO_IS_NULL_SHORT_LINK_EXPIRE_SECONDS, TimeUnit.SECONDS);
                 response.sendRedirect("/page/notfound");
                 return;
             }
 
             LinkDO linkDO = getOne(Wrappers.lambdaQuery(LinkDO.class)
-                                           .eq(LinkDO::getGid, linkGotoDO.getGid())
-                                           .eq(LinkDO::getFullShortUrl, fullShortUrl)
-                                           .eq(LinkDO::getEnableStatus, 0)
-                                           .eq(LinkDO::getDelFlag, 0)
-                                           .eq(LinkDO::getDelTime, 0L));
+                    .eq(LinkDO::getGid, linkGotoDO.getGid())
+                    .eq(LinkDO::getFullShortUrl, fullShortUrl)
+                    .eq(LinkDO::getEnableStatus, 0)
+                    .eq(LinkDO::getDelFlag, 0)
+                    .eq(LinkDO::getDelTime, 0L));
             // 短链不存在或已过期，写空值缓存避免后续重复回源
             if (linkDO == null || (linkDO.getValidDate() != null && linkDO.getValidDate().before(new Date()))) {
-                stringRedisTemplate.opsForValue().set(gotoIsNullShortLinkKey, "-", 30, TimeUnit.MINUTES);
+                stringRedisTemplate.opsForValue().set(gotoIsNullShortLinkKey, "-", GOTO_IS_NULL_SHORT_LINK_EXPIRE_SECONDS, TimeUnit.SECONDS);
                 response.sendRedirect("/page/notfound");
                 return;
             }

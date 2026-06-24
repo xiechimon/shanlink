@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xmon.shanlink.admin.common.convention.result.Result;
 import com.xmon.shanlink.admin.common.convention.result.Results;
 import com.xmon.shanlink.admin.remote.config.ShanLinkRemoteConfiguration;
+import com.xmon.shanlink.admin.dto.req.LinkBatchCreateReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkUpdateReqDTO;
@@ -11,6 +12,7 @@ import com.xmon.shanlink.admin.dto.req.RecycleBinPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.RecycleBinRecoverReqDTO;
 import com.xmon.shanlink.admin.dto.req.RecycleBinRemoveReqDTO;
 import com.xmon.shanlink.admin.dto.req.RecycleBinSaveReqDTO;
+import com.xmon.shanlink.admin.dto.resp.LinkBatchCreateRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkCreateRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkPageRespDTO;
@@ -41,6 +43,12 @@ public interface ShanLinkRemoteService {
      */
     @PostMapping("/api/shan-link/v1/link")
     Result<LinkCreateRespDTO> createLink(@RequestBody LinkCreateReqDTO requestParam);
+
+    /**
+     * 批量创建短链接
+     */
+    @PostMapping("/api/shan-link/v1/link/batch")
+    Result<LinkBatchCreateRespDTO> batchCreateLink(@RequestBody LinkBatchCreateReqDTO requestParam);
 
     /**
      * 分页查询短链接

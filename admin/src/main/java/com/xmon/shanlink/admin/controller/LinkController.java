@@ -3,9 +3,11 @@ package com.xmon.shanlink.admin.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xmon.shanlink.admin.common.convention.result.Result;
 import com.xmon.shanlink.admin.common.convention.result.Results;
+import com.xmon.shanlink.admin.dto.req.LinkBatchCreateReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkUpdateReqDTO;
+import com.xmon.shanlink.admin.dto.resp.LinkBatchCreateRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkCreateRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkPageRespDTO;
@@ -75,5 +77,14 @@ public class LinkController {
     @GetMapping("/count")
     public Result<List<LinkGroupCountQueryRespDTO>> listGroupShortLinkCount(@RequestParam("gidList") List<String> gidList) {
         return Results.success(shortLinkRemoteService.listGroupShortLinkCount(gidList).getData());
+    }
+
+    /**
+     * 批量创建短链接
+     */
+    @PostMapping("/batch")
+    public Result<LinkBatchCreateRespDTO> batchCreateLink(@RequestBody LinkBatchCreateReqDTO requestParam) {
+        requestParam.setCreatedType(CONSOLE_CREATE_TYPE);
+        return Results.success(shortLinkRemoteService.batchCreateLink(requestParam).getData());
     }
 }

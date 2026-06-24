@@ -22,6 +22,11 @@ public class RedisCacheConstant {
     public static final String GOTO_IS_NULL_SHORT_LINK_KEY = "shan-link:is-null:goto_%s";
 
     /**
+     * 短链接空值缓存过期时间（秒）
+     */
+    public static final long GOTO_IS_NULL_SHORT_LINK_EXPIRE_SECONDS = 30 * 60L;
+
+    /**
      * 短链接跳转锁前缀 Key
      */
     public static final String LOCK_GOTO_SHORT_LINK_KEY = "shan-link:lock:goto:%s";

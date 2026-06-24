@@ -3,9 +3,11 @@ package com.xmon.shanlink.project.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xmon.shanlink.project.dao.entity.LinkDO;
+import com.xmon.shanlink.project.dto.req.LinkBatchCreateReqDTO;
 import com.xmon.shanlink.project.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.project.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.project.dto.req.LinkUpdateReqDTO;
+import com.xmon.shanlink.project.dto.resp.LinkBatchCreateRespDTO;
 import com.xmon.shanlink.project.dto.resp.LinkCreateRespDTO;
 import com.xmon.shanlink.project.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.project.dto.resp.LinkPageRespDTO;
@@ -26,6 +28,14 @@ public interface LinkService extends IService<LinkDO> {
      * @return 创建短链接响应实体
      */
     LinkCreateRespDTO createLink(LinkCreateReqDTO requestParam);
+
+    /**
+     * 批量创建短链接
+     *
+     * @param requestParam 请求参数
+     * @return 批量创建响应实体
+     */
+    LinkBatchCreateRespDTO batchCreateLink(LinkBatchCreateReqDTO requestParam);
 
     /**
      * 分页查询短链接
