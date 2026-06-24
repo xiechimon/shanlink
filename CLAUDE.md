@@ -4,8 +4,8 @@
 闪链（ShanLink）短链系统，Spring Boot 3 微服务：`admin`（:8002 用户管理）、`project`（短链核心）、`gateway`（:8000）、`dashboard`（Vue3 前端）。
 
 ## 环境
-Java 17、Spring Boot 3.0.7、MyBatis-Plus 3.5.15、ShardingSphere 5.3.2、Redisson 3.27.2、Hutool 5.8.27、TTL 2.14.3。
-前置依赖：MySQL（`shanlink` 库）、Redis（127.0.0.1:6379）。
+Java 17、Spring Boot 3.0.7、MyBatis-Plus 3.5.15、ShardingSphere 5.3.2、Redisson 3.27.2、Hutool 5.8.27、TTL 2.14.3、RocketMQ 5.1.4（starter 2.3.0）。
+前置依赖：MySQL（`shanlink` 库）、Redis（127.0.0.1:6379）、RocketMQ（127.0.0.1:9876，`docker/rocketmq/docker-compose.yml` 一键启动）。
 
 ## 常用命令
 ```bash
@@ -62,3 +62,4 @@ com.xmon.shanlink.admin
 - ShardingSphere 分片键为 `gid`，查 `t_link` 必须带 `gid`，否则广播全分片。
 - `@Transactional` 事务内不能写布隆过滤器，事务回滚后 BF 无法撤销。
 - Gateway 鉴权后将用户信息写入 Header，下游通过 `UserContext` 读取；请求结束 `finally` 必须 `removeUser()`。
+- 访问统计经 RocketMQ 异步落库：生产者（`saveStats`）在 Web 线程提取请求数据（UA/IP/Cookie/Redis 去重）后发消息，消费者（`ShortLinkStatsSaveConsumer`）幂等写 8 张统计表（`actualSaveStats`）。MQ 组件在 `mq/{producer,consumer,idempotent}` 包，消息至少投递一次，靠 `MessageQueueIdempotentHandler` 防重复计数。

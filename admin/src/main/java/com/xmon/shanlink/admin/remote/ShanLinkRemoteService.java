@@ -1,12 +1,14 @@
 package com.xmon.shanlink.admin.remote;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xmon.shanlink.admin.common.convention.result.Result;
-import com.xmon.shanlink.admin.common.convention.result.Results;
-import com.xmon.shanlink.admin.remote.config.ShanLinkRemoteConfiguration;
 import com.xmon.shanlink.admin.dto.req.LinkBatchCreateReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkCreateReqDTO;
+import com.xmon.shanlink.admin.dto.req.LinkGroupStatsReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkPageReqDTO;
+import com.xmon.shanlink.admin.dto.req.LinkStatsAccessRecordReqDTO;
+import com.xmon.shanlink.admin.dto.req.LinkStatsReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkUpdateReqDTO;
 import com.xmon.shanlink.admin.dto.req.RecycleBinPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.RecycleBinRecoverReqDTO;
@@ -16,7 +18,9 @@ import com.xmon.shanlink.admin.dto.resp.LinkBatchCreateRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkCreateRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkPageRespDTO;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xmon.shanlink.admin.dto.resp.LinkStatsAccessRecordRespDTO;
+import com.xmon.shanlink.admin.dto.resp.LinkStatsRespDTO;
+import com.xmon.shanlink.admin.remote.config.ShanLinkRemoteConfiguration;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -103,5 +107,23 @@ public interface ShanLinkRemoteService {
      */
     @GetMapping("/api/shan-link/v1/recycle-bin/page")
     Result<Page<LinkPageRespDTO>> pageRecycleBin(@SpringQueryMap RecycleBinPageReqDTO requestParam);
+
+    /**
+     * 查询单个短链接监控数据
+     */
+    @GetMapping("/api/shan-link/v1/stats")
+    Result<LinkStatsRespDTO> oneShortLinkStats(@SpringQueryMap LinkStatsReqDTO requestParam);
+
+    /**
+     * 查询分组短链接监控数据
+     */
+    @GetMapping("/api/shan-link/v1/stats/group")
+    Result<LinkStatsRespDTO> groupShortLinkStats(@SpringQueryMap LinkGroupStatsReqDTO requestParam);
+
+    /**
+     * 分页查询短链接访问记录
+     */
+    @GetMapping("/api/shan-link/v1/stats/access-record")
+    Result<IPage<LinkStatsAccessRecordRespDTO>> shortLinkAccessRecordPage(@SpringQueryMap LinkStatsAccessRecordReqDTO requestParam);
 
 }
