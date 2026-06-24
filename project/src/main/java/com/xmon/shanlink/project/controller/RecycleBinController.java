@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.xmon.shanlink.project.common.convention.result.Result;
 import com.xmon.shanlink.project.common.convention.result.Results;
 import com.xmon.shanlink.project.dto.req.RecycleBinPageReqDTO;
+import com.xmon.shanlink.project.dto.req.RecycleBinRecoverReqDTO;
 import com.xmon.shanlink.project.dto.req.RecycleBinSaveReqDTO;
 import com.xmon.shanlink.project.dto.resp.LinkPageRespDTO;
 import com.xmon.shanlink.project.service.RecycleBinService;
@@ -39,5 +40,14 @@ public class RecycleBinController {
     @GetMapping("/page")
     public Result<IPage<LinkPageRespDTO>> pageRecycleBin(RecycleBinPageReqDTO requestParam) {
         return Results.success(recycleBinService.pageRecycleBin(requestParam));
+    }
+
+    /**
+     * 恢复短链接
+     */
+    @PostMapping("/recover")
+    public Result<Void> recoverRecycleBin(@RequestBody RecycleBinRecoverReqDTO requestParam) {
+        recycleBinService.recoverRecycleBin(requestParam);
+        return Results.success();
     }
 }

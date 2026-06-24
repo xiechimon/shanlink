@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xmon.shanlink.admin.common.convention.result.Result;
 import com.xmon.shanlink.admin.common.convention.result.Results;
 import com.xmon.shanlink.admin.dto.req.RecycleBinPageReqDTO;
+import com.xmon.shanlink.admin.dto.req.RecycleBinRecoverReqDTO;
 import com.xmon.shanlink.admin.dto.req.RecycleBinSaveReqDTO;
 import com.xmon.shanlink.admin.dto.resp.GroupRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkPageRespDTO;
@@ -48,5 +49,14 @@ public class RecycleBinController {
                 .toList();
         requestParam.setGidList(gidList);
         return Results.success(shanLinkRemoteService.pageRecycleBin(requestParam).getData());
+    }
+
+    /**
+     * 恢复短链接
+     */
+    @PostMapping("/recover")
+    public Result<Void> recoverRecycleBin(@RequestBody RecycleBinRecoverReqDTO requestParam) {
+        shanLinkRemoteService.recoverRecycleBin(requestParam);
+        return Results.success();
     }
 }
