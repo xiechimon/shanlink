@@ -11,6 +11,12 @@ spring:
       port: 6379
       username: root
 
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: shan-link_stats-save_producer-group
+    send-message-timeout: 3000
+
 shan-link:
   domain:
     default: 127.0.0.1:8001

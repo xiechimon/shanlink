@@ -65,4 +65,9 @@ public class RedisCacheConstant {
      * 创建短链接锁标识
      */
     public static final String SHORT_LINK_CREATE_LOCK_KEY = "shan-link:lock:create";
+
+    /**
+     * 短链接统计消息消费幂等标识
+     */
+    public static final String STATS_IDEMPOTENT_KEY = "shan-link:stats:idempotent:%s";
 }
