@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 ## 项目概述
-闪链（ShanLink）短链系统，Spring Boot 3 微服务：`admin`（:8002 用户管理）、`project`（短链核心）、`gateway`（:8000）、`dashboard`（Vue3 前端）。
+闪链（ShanLink）短链系统，Spring Boot 3 单体应用（:8000，单一 Maven 模块、单一启动类 `ShanLinkApplication`），内含用户/分组管理与短链核心两大业务；前端 `dashboard`（Vue3）。
 
 ## 环境
 Java 17、Spring Boot 3.0.7、MyBatis-Plus 3.5.15、ShardingSphere 5.3.2、Redisson 3.27.2、Hutool 5.8.27、TTL 2.14.3、RocketMQ 5.1.4（starter 2.3.0）。
@@ -9,21 +9,20 @@ Java 17、Spring Boot 3.0.7、MyBatis-Plus 3.5.15、ShardingSphere 5.3.2、Redis
 
 ## 常用命令
 ```bash
-mvn clean package -DskipTests           # 构建全部
-mvn clean package -pl admin -DskipTests # 构建单模块
-mvn spring-boot:run -pl admin           # 运行
-mvn test -pl admin -Dtest=Foo#bar       # 单测
+mvn clean package -DskipTests     # 构建
+mvn spring-boot:run               # 运行
+mvn test -Dtest=Foo#bar           # 单测
 ```
 
-## 包结构（以 admin 为例）
+## 包结构
 ```
-com.xmon.shanlink.admin
+com.xmon.shanlink
 ├── common/biz.user     # UserContext、UserTransmitFilter
 ├── common/constant     # Redis Key、TTL 常量
 ├── common/convention   # errorcode / exception / result
 ├── common/database     # BaseDO
 ├── config              # 配置类（布隆过滤器等）
-├── controller / service / dao/entity / dto / remote / toolkit
+├── controller / service / dao/entity / dto / mq / toolkit
 ```
 
 ## 编码规范
@@ -53,13 +52,13 @@ com.xmon.shanlink.admin
 全部常量放 `RedisCacheConstant`，禁止硬编码 Key 字符串。
 
 ### API 路径
-`/api/shan-link/{module}/v1/{resource}`，示例：`/api/shan-link/admin/v1/user/{username}`
+用户/分组：`/api/shan-link/admin/v1/{resource}`（示例 `/api/shan-link/admin/v1/user/{username}`）；短链业务：`/api/shan-link/v1/{resource}`（示例 `/api/shan-link/v1/link`）。
 
 ### 依赖版本
-统一在根 `pom.xml` `<dependencyManagement>` 声明，子模块不写版本号。Lombok 全局依赖，子模块无需引入。
+统一在 `pom.xml` `<dependencyManagement>` 声明，业务依赖不写版本号。Lombok 全局依赖。
 
 ## 注意事项
 - ShardingSphere 分片键为 `gid`，查 `t_link` 必须带 `gid`，否则广播全分片。
 - `@Transactional` 事务内不能写布隆过滤器，事务回滚后 BF 无法撤销。
-- Gateway 鉴权后将用户信息写入 Header，下游通过 `UserContext` 读取；请求结束 `finally` 必须 `removeUser()`。
+- 鉴权由应用内 `UserTransmitFilter` 完成：从请求 Header 解析用户信息（登录态查 Redis）写入 `UserContext`；请求结束 `finally` 必须 `removeUser()`。
 - 访问统计经 RocketMQ 异步落库：生产者（`saveStats`）在 Web 线程提取请求数据（UA/IP/Cookie/Redis 去重）后发消息，消费者（`ShortLinkStatsSaveConsumer`）幂等写 8 张统计表（`actualSaveStats`）。MQ 组件在 `mq/{producer,consumer,idempotent}` 包，消息至少投递一次，靠 `MessageQueueIdempotentHandler` 防重复计数。

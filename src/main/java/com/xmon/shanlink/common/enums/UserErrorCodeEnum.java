@@ -1,0 +1,40 @@
+package com.xmon.shanlink.common.enums;
+
+
+import com.xmon.shanlink.common.convention.errorcode.IErrorCode;
+
+public enum UserErrorCodeEnum implements IErrorCode {
+
+    USER_NULL("A000200", "用户记录不存在"),
+
+    USER_NAME_EXIST("A000201", "用户名已存在"),
+
+    USER_EXIST("A000202", "用户记录已存在"),
+
+    USER_PASSWORD_ERROR("A000203", "用户密码错误"),
+
+    USER_NOT_LOGIN("A000204", "用户未登录"),
+
+    USER_UPDATE_NO_PERMISSION("A000205", "用户信息修改无权限"),
+
+    USER_SAVE_ERROR("B000200", "用户记录新增失败");
+
+    private final String code;
+
+    private final String message;
+
+    UserErrorCodeEnum(String code, String message) {
+        this.code = code;
+        this.message = message;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+
+    @Override
+    public String message() {
+        return message;
+    }
+}

@@ -1,0 +1,146 @@
+package com.xmon.shanlink.service.impl;
+
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.lang.UUID;
+import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xmon.shanlink.common.biz.user.UserContext;
+import com.xmon.shanlink.common.convention.exception.ClientException;
+import com.xmon.shanlink.common.enums.UserErrorCodeEnum;
+import com.xmon.shanlink.dao.entity.UserDO;
+import com.xmon.shanlink.dao.mapper.UserMapper;
+import com.xmon.shanlink.dto.req.UserLoginReqDTO;
+import com.xmon.shanlink.dto.req.UserRegisterReqDTO;
+import com.xmon.shanlink.dto.req.UserUpdateReqDTO;
+import com.xmon.shanlink.dto.resp.UserLoginRespDTO;
+import com.xmon.shanlink.dto.resp.UserRespDTO;
+import com.xmon.shanlink.service.GroupService;
+import com.xmon.shanlink.service.UserService;
+import lombok.RequiredArgsConstructor;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import static com.xmon.shanlink.common.constant.RedisCacheConstant.LOCK_USER_REGISTER_KEY;
+import static com.xmon.shanlink.common.constant.RedisCacheConstant.USER_LOGIN_KEY;
+import static com.xmon.shanlink.common.constant.RedisCacheConstant.USER_LOGIN_TTL;
+
+/**
+ * 用户接口实现层
+ */
+@Service
+@RequiredArgsConstructor
+public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements UserService {
+
+    private final RBloomFilter<String> userRegisterCachePenetrationBloomFilter;
+    private final RedissonClient redissonClient;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final GroupService groupService;
+
+    @Override
+    public UserRespDTO getUserByUsername(String username) {
+        LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
+                .eq(UserDO::getUsername, username);
+        UserDO userDO = getOne(queryWrapper);
+        if (userDO == null) {
+            throw new ClientException(UserErrorCodeEnum.USER_NULL);
+        }
+
+        return BeanUtil.toBean(userDO, UserRespDTO.class);
+    }
+
+    @Override
+    public Boolean checkUsername(String username) {
+        return userRegisterCachePenetrationBloomFilter.contains(username);
+    }
+
+    @Override
+    public void register(UserRegisterReqDTO requestParam) {
+        if (checkUsername(requestParam.getUsername())) {
+            throw new ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
+        }
+
+        // 分布式锁，防止恶意请求大量使用相同用户名进行注册
+        RLock lock = redissonClient.getLock(LOCK_USER_REGISTER_KEY + requestParam.getUsername());
+        if (!lock.tryLock()) {
+            throw new ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
+        }
+        try {
+            save(BeanUtil.toBean(requestParam, UserDO.class));
+            groupService.saveGroup("默认分组", requestParam.getUsername());
+            userRegisterCachePenetrationBloomFilter.add(requestParam.getUsername());
+        } catch (DuplicateKeyException e) {
+            throw new ClientException(UserErrorCodeEnum.USER_EXIST);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public void update(UserUpdateReqDTO requestParam) {
+        if (UserContext.getUsername() == null || !UserContext.getUsername().equals(requestParam.getUsername())) {
+            throw new ClientException(UserErrorCodeEnum.USER_UPDATE_NO_PERMISSION);
+        }
+
+        LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
+                .eq(UserDO::getUsername, requestParam.getUsername());
+
+        update(BeanUtil.toBean(requestParam, UserDO.class), queryWrapper);
+    }
+
+    @Override
+    public UserLoginRespDTO login(UserLoginReqDTO requestParam) {
+        // 查询用户
+        LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
+                .eq(UserDO::getUsername, requestParam.getUsername())
+                .eq(UserDO::getDelFlag, 0);
+        UserDO userDO = getOne(queryWrapper);
+        if (userDO == null) {
+            throw new ClientException(UserErrorCodeEnum.USER_NULL);
+        }
+        // 验证密码
+        if (!userDO.getPassword().equals(requestParam.getPassword())) {
+            throw new ClientException(UserErrorCodeEnum.USER_PASSWORD_ERROR);
+        }
+        // 已登录：直接返回已有 token
+        // TODO：后续用 Gateway 进行滑动续期
+        String loginKey = USER_LOGIN_KEY + requestParam.getUsername();
+
+        Map<Object, Object> loginMap = stringRedisTemplate.opsForHash().entries(loginKey);
+        if (CollUtil.isNotEmpty(loginMap)) {
+            String token = loginMap.keySet().iterator().next().toString();
+            return new UserLoginRespDTO(token);
+        }
+        // 未登录：生成新 token
+        String token = UUID.randomUUID().toString();
+        stringRedisTemplate.opsForHash().put(loginKey, token, JSON.toJSONString(userDO));
+        stringRedisTemplate.expire(loginKey, USER_LOGIN_TTL, TimeUnit.DAYS);
+        // 返回 token
+        return new UserLoginRespDTO(token);
+    }
+
+    @Override
+    public Boolean checkLogin(String username, String token) {
+        String loginKey = USER_LOGIN_KEY + username;
+        return stringRedisTemplate.opsForHash().get(loginKey, token) != null;
+    }
+
+    @Override
+    public void logout(String username, String token) {
+        String loginKey = USER_LOGIN_KEY + username;
+        if (checkLogin(username, token)) {
+            stringRedisTemplate.delete(loginKey);
+            return;
+        }
+        throw new ClientException(UserErrorCodeEnum.USER_NOT_LOGIN);
+    }
+}

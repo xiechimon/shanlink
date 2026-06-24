@@ -1,0 +1,29 @@
+package com.xmon.shanlink.controller;
+
+import com.xmon.shanlink.service.LinkService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * 短链接跳转控制层
+ */
+@RestController
+@RequiredArgsConstructor
+public class LinkRedirectController {
+
+    private final LinkService linkService;
+
+    /**
+     * 短链接跳转
+     */
+    @GetMapping("/{short-uri}")
+    public void restoreUrl(@PathVariable("short-uri") String shortUri,
+                           HttpServletRequest request,
+                           HttpServletResponse response) {
+        linkService.restoreUrl(shortUri, request, response);
+    }
+}
