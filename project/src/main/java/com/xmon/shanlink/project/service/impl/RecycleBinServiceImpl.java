@@ -1,15 +1,21 @@
 package com.xmon.shanlink.project.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xmon.shanlink.project.dao.entity.LinkDO;
 import com.xmon.shanlink.project.dao.mapper.LinkMapper;
+import com.xmon.shanlink.project.dto.req.RecycleBinPageReqDTO;
 import com.xmon.shanlink.project.dto.req.RecycleBinSaveReqDTO;
+import com.xmon.shanlink.project.dto.resp.LinkPageRespDTO;
 import com.xmon.shanlink.project.service.RecycleBinService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import static com.xmon.shanlink.project.common.constant.RedisCacheConstant.GOTO_SHORT_LINK_KEY;
 
@@ -35,5 +41,16 @@ public class RecycleBinServiceImpl extends ServiceImpl<LinkMapper, LinkDO> imple
                 .build();
         baseMapper.update(shortLinkDO, updateWrapper);
         stringRedisTemplate.delete(String.format(GOTO_SHORT_LINK_KEY, requestParam.getFullShortUrl()));
+    }
+
+    @Override
+    public IPage<LinkPageRespDTO> pageRecycleBin(RecycleBinPageReqDTO requestParam) {
+        LambdaQueryWrapper<LinkDO> queryWrapper = Wrappers.lambdaQuery(LinkDO.class)
+                .in(!CollectionUtils.isEmpty(requestParam.getGidList()), LinkDO::getGid, requestParam.getGidList())
+                .eq(LinkDO::getEnableStatus, 1)
+                .eq(LinkDO::getDelFlag, 0)
+                .orderByDesc(LinkDO::getUpdateTime);
+        IPage<LinkDO> page = page(requestParam, queryWrapper);
+        return page.convert(each -> BeanUtil.toBean(each, LinkPageRespDTO.class));
     }
 }

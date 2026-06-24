@@ -81,7 +81,7 @@ public class LinkPageRespDTO {
     /**
      * 今日PV
      */
-    private Integer todayPv;
+    private Integer todayPv = 0;
 
     /**
      * 历史UV
@@ -91,7 +91,7 @@ public class LinkPageRespDTO {
     /**
      * 今日UV
      */
-    private Integer todayUv;
+    private Integer todayUv = 0;
 
     /**
      * 历史UIP
@@ -101,5 +101,5 @@ public class LinkPageRespDTO {
     /**
      * 今日UIP
      */
-    private Integer todayUip;
+    private Integer todayUip = 0;
 }

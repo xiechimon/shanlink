@@ -7,10 +7,12 @@ import com.xmon.shanlink.admin.remote.config.ShanLinkRemoteConfiguration;
 import com.xmon.shanlink.admin.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkUpdateReqDTO;
+import com.xmon.shanlink.admin.dto.req.RecycleBinPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.RecycleBinSaveReqDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkCreateRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkPageRespDTO;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.SpringQueryMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -73,5 +75,11 @@ public interface ShanLinkRemoteService {
      */
     @PostMapping("/api/shan-link/v1/recycle-bin/save")
     Result<Void> saveRecycleBin(@RequestBody RecycleBinSaveReqDTO requestParam);
+
+    /**
+     * 分页查询回收站短链接
+     */
+    @GetMapping("/api/shan-link/v1/recycle-bin/page")
+    Result<Page<LinkPageRespDTO>> pageRecycleBin(@SpringQueryMap RecycleBinPageReqDTO requestParam);
 
 }
