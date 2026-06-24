@@ -7,6 +7,7 @@ import com.xmon.shanlink.admin.remote.config.ShanLinkRemoteConfiguration;
 import com.xmon.shanlink.admin.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.admin.dto.req.LinkUpdateReqDTO;
+import com.xmon.shanlink.admin.dto.req.RecycleBinSaveReqDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkCreateRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.admin.dto.resp.LinkPageRespDTO;
@@ -66,5 +67,11 @@ public interface ShanLinkRemoteService {
      */
     @GetMapping("/api/shan-link/v1/title")
     Result<String> getTitleByUrl(@RequestParam("url") String url);
+
+    /**
+     * 移入回收站
+     */
+    @PostMapping("/api/shan-link/v1/recycle-bin/save")
+    Result<Void> saveRecycleBin(@RequestBody RecycleBinSaveReqDTO requestParam);
 
 }
