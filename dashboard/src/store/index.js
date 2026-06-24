@@ -4,8 +4,8 @@ import { createStore } from 'vuex'
 const store = createStore({
   state() {
     return {
-      // domain: 'nurl.ink'
-      domain: 's.nageoffer.com'
+      // 短链接默认域名：部署后改成你的实际短链接域名
+      domain: ''
     }
   }
 })

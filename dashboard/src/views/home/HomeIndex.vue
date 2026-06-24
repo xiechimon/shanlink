@@ -3,43 +3,13 @@
     <el-container>
       <el-header height="54px" style="padding: 0">
         <div class="header">
-          <div @click="toMySpace" class="logo">拿个offer-SaaS短链接@马丁</div>
+          <div @click="toMySpace" class="logo">ShanLink · 闪链短链接平台</div>
           <div style="display: flex; align-items: center">
-            <a
-              class="link-span"
-              style="text-decoration: none"
-              target="_blank"
-              href="https://nageoffer.com/shortlink/"
-              >官方文档</a
-            >
-            <a
-              class="link-span"
-              style="text-decoration: none"
-              target="_blank"
-              href="https://nageoffer.com/planet/group/"
-              >加沟通群</a
-            >
-            <a
-                class="link-span"
-                style="text-decoration: none"
-                target="_blank"
-                href="https://nageoffer.com/shortlink/video/"
-            >🔥视频教程</a
-            >
-            <a
-                class="link-span"
-                style="text-decoration: none"
-                target="_blank"
-                href="http://shortlink.nageoffer.com"
-            >演示环境</a
-            >
-            <el-dropdown>
+            <el-dropdown trigger="click">
               <div class="block">
-                <span
-                    class="name-span"
-                    style="text-decoration: none"
-                >{{username}}</span
-                >
+                <el-icon class="user-icon"><User /></el-icon>
+                <span class="name-span">{{ username || '未登录' }}</span>
+                <el-icon class="arrow-icon"><ArrowDown /></el-icon>
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -83,6 +53,7 @@
 <script setup>
 import { ref, getCurrentInstance, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { User, ArrowDown } from '@element-plus/icons-vue'
 import { removeKey, removeUsername, getToken, getUsername } from '@/core/auth.js'
 import { ElMessage } from 'element-plus'
 const { proxy } = getCurrentInstance()
@@ -114,9 +85,14 @@ const toMySpace = () => {
 const username = ref('')
 onMounted(async () => {
   const actualUsername = getUsername()
-  const res = await API.user.queryUserInfo(actualUsername)
-  // firstName.value = res?.data?.data?.realName?.split('')[0]
-  username.value = truncateText(actualUsername, 8)
+  // 先用 cookie 里的用户名渲染，保证顶栏即便后端不可用也能展示
+  username.value = truncateText(actualUsername || '', 8)
+  // 后端可用时同步一下用户信息（失败不阻塞 UI）
+  try {
+    if (actualUsername) await API.user.queryUserInfo(actualUsername)
+  } catch (_) {
+    /* 后端不可用，仅前端展示 cookie 用户名 */
+  }
 })
 const extractColorByName = (name) => {
   var temp = []
@@ -209,15 +185,33 @@ const truncateText = (text, maxLength) => {
 
 .name-span {
   color: #fff;
-  opacity: .6;
-  margin-right: 30px;
-  font-size: 12px;
+  opacity: .75;
+  margin: 0 6px 0 6px;
+  font-size: 13px;
   font-family: 'Helvetica Neue', Helvetica, STHeiTi, Arial, sans-serif;
   cursor: pointer;
   text-decoration: none;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.user-icon,
+.arrow-icon {
+  color: #fff;
+  opacity: .75;
+  font-size: 14px;
+}
+
+.block:hover .name-span,
+.block:hover .user-icon,
+.block:hover .arrow-icon {
+  opacity: 1;
+}
+
+.block {
+  margin-right: 24px;
 }
 
 .avatar {
