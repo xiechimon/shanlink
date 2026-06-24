@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xmon.shanlink.project.dao.mapper.LinkAccessLogsMapper">
+
+    <select id="selectPageAccessLog" resultType="com.xmon.shanlink.project.dto.resp.LinkStatsAccessRecordRespDTO">
+        SELECT user AS uvType, ip, browser, os, network, device, locale, create_time AS createTime
+        FROM t_link_access_logs
+        WHERE full_short_url = #{param.fullShortUrl}
+          AND del_flag = 0
+          AND DATE(create_time) BETWEEN #{param.startDate} AND #{param.endDate}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectUvTypeByUsers" resultType="java.lang.String">
+        SELECT DISTINCT user
+        FROM t_link_access_logs
+        WHERE full_short_url = #{fullShortUrl}
+          AND del_flag = 0
+          AND DATE(create_time) &lt; #{startDate}
+          AND user IN
+        <foreach collection="users" item="user" open="(" separator="," close=")">
+            #{user}
+        </foreach>
+    </select>
+
+    <select id="listTopIpByShortLink" resultType="java.util.Map">
+        SELECT ip, COUNT(*) AS count
+        FROM t_link_access_logs
+        WHERE full_short_url = #{fullShortUrl}
+          AND del_flag = 0
+          AND DATE(create_time) BETWEEN #{startDate} AND #{endDate}
+        GROUP BY ip
+        ORDER BY count DESC
+        LIMIT 5
+    </select>
+
+</mapper>
