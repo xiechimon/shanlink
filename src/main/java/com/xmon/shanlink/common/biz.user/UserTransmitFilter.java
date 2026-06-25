@@ -36,8 +36,9 @@ public class UserTransmitFilter implements Filter {
 
         // 公开路径放行（无需登陆）
         String uri = httpServletRequest.getRequestURI();
+        String method = httpServletRequest.getMethod();
         boolean isPublicPath = uri.equals("/api/shan-link/admin/v1/user/login") ||
-                uri.equals("/api/shan-link/admin/v1/user/register") ||
+                (uri.equals("/api/shan-link/admin/v1/user") && "POST".equalsIgnoreCase(method)) ||
                 uri.equals("/api/shan-link/admin/v1/user/check-username") ||
                 (!uri.startsWith("/api/") && uri.length() > 1);
         if (!isPublicPath) {
