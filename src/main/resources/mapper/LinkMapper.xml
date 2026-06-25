@@ -12,6 +12,7 @@
             #{gid}
         </foreach>
         AND del_flag = 0
+        AND enable_status = 0
         GROUP BY gid
     </select>
 

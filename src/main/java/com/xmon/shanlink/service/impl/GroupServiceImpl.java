@@ -9,9 +9,11 @@ import com.xmon.shanlink.common.convention.exception.ClientException;
 import com.xmon.shanlink.common.enums.GroupErrorCodeEnum;
 import com.xmon.shanlink.dao.entity.GroupDO;
 import com.xmon.shanlink.dao.mapper.GroupMapper;
+import com.xmon.shanlink.dao.mapper.LinkMapper;
 import com.xmon.shanlink.dto.req.GroupSortReqDTO;
 import com.xmon.shanlink.dto.req.GroupUpdateReqDO;
 import com.xmon.shanlink.dto.resp.GroupRespDTO;
+import com.xmon.shanlink.dto.resp.LinkGroupCountQueryRespDTO;
 import com.xmon.shanlink.service.GroupService;
 import com.xmon.shanlink.toolkit.RandomGenerator;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,8 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 分组接口实现层
@@ -30,6 +34,7 @@ import java.util.List;
 public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implements GroupService {
 
     private final RBloomFilter<String> gidRegisterCachePenetrationBloomFilter;
+    private final LinkMapper linkMapper;
 
     @Value("${shan-link.group.max-num}")
     private Integer groupMaxNum;
@@ -86,7 +91,16 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                 .eq(GroupDO::getUsername, UserContext.getUsername())
                 .eq(GroupDO::getDelFlag, 0)
                 .orderByDesc(GroupDO::getSortOrder);
-        return BeanUtil.copyToList(list(queryWrapper), GroupRespDTO.class);
+        List<GroupRespDTO> result = BeanUtil.copyToList(list(queryWrapper), GroupRespDTO.class);
+        if (result.isEmpty()) {
+            return result;
+        }
+        // 填充每个分组下的短链接数量
+        List<String> gidList = result.stream().map(GroupRespDTO::getGid).collect(Collectors.toList());
+        Map<String, Integer> countMap = linkMapper.listGroupShortLinkCount(gidList).stream()
+                .collect(Collectors.toMap(LinkGroupCountQueryRespDTO::getGid, LinkGroupCountQueryRespDTO::getShortLinkCount));
+        result.forEach(g -> g.setShortLinkCount(countMap.getOrDefault(g.getGid(), 0)));
+        return result;
     }
 
     @Override
