@@ -5,7 +5,8 @@ import router from "@/router";
 import { ElMessage } from 'element-plus'
 
 // const router = useRouter()
-const baseURL = '/api/short-link/admin/v1'
+// 后端单体应用统一前缀，用户/分组在 /admin/v1，短链业务在 /v1，各模块自带子路径
+const baseURL = '/api/shan-link'
 // 创建实例
 const http = axios.create({
     // api 代理为服务器请求地址

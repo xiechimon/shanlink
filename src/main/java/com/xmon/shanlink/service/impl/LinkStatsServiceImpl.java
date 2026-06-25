@@ -7,9 +7,12 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.useragent.UserAgent;
 import cn.hutool.http.useragent.UserAgentUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xmon.shanlink.dao.entity.*;
 import com.xmon.shanlink.dao.mapper.*;
 import com.xmon.shanlink.dto.biz.LinkStatsRecordDTO;
+import com.xmon.shanlink.dto.req.LinkGroupStatsAccessRecordReqDTO;
 import com.xmon.shanlink.dto.req.LinkGroupStatsReqDTO;
 import com.xmon.shanlink.dto.req.LinkStatsAccessRecordReqDTO;
 import com.xmon.shanlink.dto.req.LinkStatsReqDTO;
@@ -40,6 +43,7 @@ import static com.xmon.shanlink.common.constant.RedisCacheConstant.SHORT_LINK_ST
 @RequiredArgsConstructor
 public class LinkStatsServiceImpl implements LinkStatsService {
 
+    private final LinkMapper linkMapper;
     private final LinkAccessStatsMapper linkAccessStatsMapper;
     private final LinkBrowserStatsMapper linkBrowserStatsMapper;
     private final LinkOsStatsMapper linkOsStatsMapper;
@@ -350,6 +354,37 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                     requestParam.getStartDate(),
                     requestParam.getEndDate(),
                     users);
+            page.getRecords().forEach(r -> {
+                if (r.getUvType() != null) {
+                    r.setUvType(oldUsers.contains(r.getUvType()) ? "旧访客" : "新访客");
+                }
+            });
+        }
+        return page;
+    }
+
+    @Override
+    public IPage<LinkStatsAccessRecordRespDTO> groupShortLinkAccessRecordPage(LinkGroupStatsAccessRecordReqDTO requestParam) {
+        // 先按 gid 查出该分组下所有短链接（gid 为分片键，单分片查询）
+        List<String> fullShortUrls = linkMapper.selectList(Wrappers.lambdaQuery(LinkDO.class)
+                        .eq(LinkDO::getGid, requestParam.getGid())
+                        .eq(LinkDO::getDelFlag, 0))
+                .stream()
+                .map(LinkDO::getFullShortUrl)
+                .collect(Collectors.toList());
+        if (fullShortUrls.isEmpty()) {
+            return new Page<>(requestParam.getCurrent(), requestParam.getSize());
+        }
+        IPage<LinkStatsAccessRecordRespDTO> page = linkAccessLogsMapper.selectGroupPageAccessLog(
+                requestParam, fullShortUrls, requestParam.getStartDate(), requestParam.getEndDate());
+        // 标记新老访客
+        List<String> users = page.getRecords().stream()
+                .map(LinkStatsAccessRecordRespDTO::getUvType)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        if (!users.isEmpty()) {
+            List<String> oldUsers = linkAccessLogsMapper.selectGroupUvTypeByUsers(
+                    fullShortUrls, requestParam.getStartDate(), users);
             page.getRecords().forEach(r -> {
                 if (r.getUvType() != null) {
                     r.setUvType(oldUsers.contains(r.getUvType()) ? "旧访客" : "新访客");

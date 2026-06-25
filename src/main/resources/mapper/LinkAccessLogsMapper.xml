@@ -12,6 +12,33 @@
         ORDER BY create_time DESC
     </select>
 
+    <select id="selectGroupPageAccessLog" resultType="com.xmon.shanlink.dto.resp.LinkStatsAccessRecordRespDTO">
+        SELECT user AS uvType, ip, browser, os, network, device, locale, create_time AS createTime
+        FROM t_link_access_logs
+        WHERE del_flag = 0
+          AND full_short_url IN
+        <foreach collection="fullShortUrls" item="url" open="(" separator="," close=")">
+            #{url}
+        </foreach>
+          AND DATE(create_time) BETWEEN #{startDate} AND #{endDate}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectGroupUvTypeByUsers" resultType="java.lang.String">
+        SELECT DISTINCT user
+        FROM t_link_access_logs
+        WHERE del_flag = 0
+          AND full_short_url IN
+        <foreach collection="fullShortUrls" item="url" open="(" separator="," close=")">
+            #{url}
+        </foreach>
+          AND DATE(create_time) &lt; #{startDate}
+          AND user IN
+        <foreach collection="users" item="user" open="(" separator="," close=")">
+            #{user}
+        </foreach>
+    </select>
+
     <select id="selectUvTypeByUsers" resultType="java.lang.String">
         SELECT DISTINCT user
         FROM t_link_access_logs

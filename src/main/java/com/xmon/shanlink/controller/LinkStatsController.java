@@ -3,6 +3,7 @@ package com.xmon.shanlink.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.xmon.shanlink.common.convention.result.Result;
 import com.xmon.shanlink.common.convention.result.Results;
+import com.xmon.shanlink.dto.req.LinkGroupStatsAccessRecordReqDTO;
 import com.xmon.shanlink.dto.req.LinkGroupStatsReqDTO;
 import com.xmon.shanlink.dto.req.LinkStatsAccessRecordReqDTO;
 import com.xmon.shanlink.dto.req.LinkStatsReqDTO;
@@ -46,5 +47,13 @@ public class LinkStatsController {
     @GetMapping("/access-record")
     public Result<IPage<LinkStatsAccessRecordRespDTO>> shortLinkAccessRecordPage(LinkStatsAccessRecordReqDTO requestParam) {
         return Results.success(linkStatsService.shortLinkAccessRecordPage(requestParam));
+    }
+
+    /**
+     * 分页查询分组短链接访问记录
+     */
+    @GetMapping("/access-record/group")
+    public Result<IPage<LinkStatsAccessRecordRespDTO>> groupShortLinkAccessRecordPage(LinkGroupStatsAccessRecordReqDTO requestParam) {
+        return Results.success(linkStatsService.groupShortLinkAccessRecordPage(requestParam));
     }
 }

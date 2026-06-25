@@ -2,14 +2,14 @@ import http from '../axios'
 export default {
   queryPage(data) {
     return http({
-      url: '/page',
+      url: '/v1/link/page',
       method: 'get',
       params: data
     })
   },
   addSmallLink(data) {
     return http({
-      url: '/create',
+      url: '/v1/link',
       method: 'post',
       data
     })
@@ -17,16 +17,15 @@ export default {
   addLinks(data) {
     return http({
       responseType: 'arraybuffer',
-      url: '/create/batch',
+      url: '/v1/link/batch',
       method: 'post',
-      data,
-      // responseType: 'blob'
+      data
     })
   },
   editSmallLink(data) {
     return http({
-      url: '/update',
-      method: 'post',
+      url: '/v1/link',
+      method: 'put',
       data
     })
   },
@@ -34,14 +33,14 @@ export default {
   queryTitle(data) {
     return http({
       method: 'get',
-      url: '/title',
+      url: '/v1/title',
       params: data
     })
   },
   // 移动到回收站
   toRecycleBin(data) {
     return http({
-      url: '/recycle-bin/save',
+      url: '/v1/recycle-bin/save',
       method: 'post',
       data
     })
@@ -49,7 +48,7 @@ export default {
   // 查询回收站数据
   queryRecycleBin(data) {
     return http({
-      url: '/recycle-bin/page',
+      url: '/v1/recycle-bin/page',
       method: 'get',
       params: data
     })
@@ -58,14 +57,14 @@ export default {
   recoverLink(data) {
     return http({
       method: 'post',
-      url: '/recycle-bin/recover',
+      url: '/v1/recycle-bin/recover',
       data
     })
   },
   removeLink(data) {
     return http({
       method: 'post',
-      url: '/recycle-bin/remove',
+      url: '/v1/recycle-bin/remove',
       data
     })
   },
@@ -74,15 +73,15 @@ export default {
     return http({
       method: 'get',
       params: data,
-      url: 'stats'
+      url: '/v1/stats'
     })
   },
-  // 查询分组的访问记录
+  // 查询单链的访问记录
   queryLinkTable(data) {
     return http({
       method: 'get',
       params: data,
-      url: 'stats/access-record'
+      url: '/v1/stats/access-record'
     })
   }
 }

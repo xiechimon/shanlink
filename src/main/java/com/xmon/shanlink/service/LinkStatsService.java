@@ -2,6 +2,7 @@ package com.xmon.shanlink.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.xmon.shanlink.dto.biz.LinkStatsRecordDTO;
+import com.xmon.shanlink.dto.req.LinkGroupStatsAccessRecordReqDTO;
 import com.xmon.shanlink.dto.req.LinkGroupStatsReqDTO;
 import com.xmon.shanlink.dto.req.LinkStatsAccessRecordReqDTO;
 import com.xmon.shanlink.dto.req.LinkStatsReqDTO;
@@ -55,4 +56,12 @@ public interface LinkStatsService {
      * @return 访问记录分页数据
      */
     IPage<LinkStatsAccessRecordRespDTO> shortLinkAccessRecordPage(LinkStatsAccessRecordReqDTO requestParam);
+
+    /**
+     * 分页查询分组短链接访问记录
+     *
+     * @param requestParam 请求参数
+     * @return 访问记录分页数据
+     */
+    IPage<LinkStatsAccessRecordRespDTO> groupShortLinkAccessRecordPage(LinkGroupStatsAccessRecordReqDTO requestParam);
 }
