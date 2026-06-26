@@ -85,4 +85,19 @@ public class RedisCacheConstant {
      * 短链接统计消息消费幂等标识
      */
     public static final String STATS_IDEMPOTENT_KEY = "shan-link:stats:idempotent:%s";
+
+    /**
+     * 防止短链接创建缓存穿透布隆过滤器 Key
+     */
+    public static final String BF_SHORT_URI_CREATE_KEY = "shan-link:bf:short-uri-create";
+
+    /**
+     * 防止用户注册缓存穿透布隆过滤器 Key
+     */
+    public static final String BF_USER_REGISTER_KEY = "shan-link:bf:user-register";
+
+    /**
+     * 防止分组标识注册缓存穿透布隆过滤器 Key
+     */
+    public static final String BF_GID_REGISTER_KEY = "shan-link:bf:gid-register";
 }
