@@ -225,6 +225,8 @@ const login = (formEl) => {
         }
       } else if (res1.data.message === '用户不存在') {
         ElMessage.error('请输入正确的账号密码!')
+      } else {
+        ElMessage.error(res1.data.message || '登录失败，请重试')
       }
     } else {
       return false
