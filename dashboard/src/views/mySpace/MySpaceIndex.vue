@@ -371,9 +371,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, getCurrentInstance, watch, nextTick } from 'vue'
+import { ref, reactive, onMounted, getCurrentInstance, watch } from 'vue'
 import Sortable from 'sortablejs'
-import { cloneDeep } from 'lodash'
 import ChartsInfo from './components/chartsInfo/ChartsInfo.vue'
 import CreateLink from './components/createLink/CreateLink.vue'
 import CreateLinks from './components/createLink/CreateLinks.vue'
@@ -542,7 +541,7 @@ const initSortable = (className) => {
       // console.log('开始拖动')
     },
     // 结束拖动事件
-    onEnd: async ({ to, from, oldIndex, newIndex, clone, pullMode }) => {
+    onEnd: async ({ oldIndex, newIndex }) => {
       // 当oldIndex不等于newIndex时才会去请求接口
       if (newIndex !== oldIndex) {
         // 对于不同情况下数据变化后的选中数据的实现
@@ -561,7 +560,7 @@ const initSortable = (className) => {
         ) {
           selectedIndex.value = selectedIndex.value + 1
         }
-        const res = await API.group.sortGroup(transformGroupData(oldIndex, newIndex))
+        await API.group.sortGroup(transformGroupData(oldIndex, newIndex))
         // console.log('排序后的结果', res)
       }
     }
@@ -589,7 +588,7 @@ const pageParams = reactive({
 })
 watch(
   () => pageParams.orderTag,
-  (nV) => {
+  () => {
     queryPage()
   }
 )
@@ -774,7 +773,7 @@ const toRecycleBin = (data) => {
         getGroupInfo(queryPage)
       }
     })
-    .catch((reason) => {
+    .catch(() => {
       ElMessage.error('删除失败')
     })
 }
@@ -783,13 +782,13 @@ const recoverLink = (data) => {
   const { gid, fullShortUrl } = data
   API.smallLinkPage
     .recoverLink({ gid, fullShortUrl })
-    .then((res) => {
+    .then(() => {
       ElMessage.success('恢复成功')
       queryRecycleBinPage()
       // getGroupInfo(queryPage)
       getGroupInfo()         //修复短链接恢复会报系统执行出错的问题
     })
-    .catch((reason) => {
+    .catch(() => {
       ElMessage.error('恢复失败')
     })
 }
@@ -806,7 +805,7 @@ const removeLink = (data) => {
         queryRecycleBinPage()
       }
     })
-    .catch((reason) => {
+    .catch(() => {
       ElMessage.error('删除失败')
     })
 }

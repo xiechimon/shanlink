@@ -72,7 +72,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, nextTick, watch, onBeforeUnmount, getCurrentInstance } from 'vue'
+import { reactive, ref, watch, onBeforeUnmount, getCurrentInstance } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useStore } from 'vuex'
 
@@ -128,7 +128,7 @@ const formData = reactive({
 })
 watch(
   () => formData,
-  nV => {
+  () => {
   },
   {
     deep: true
@@ -292,7 +292,7 @@ const onSubmit = async (formEl) => {
     submitDisable.value = false
     return
   }
-  await formEl.validate(async (valid, fields) => {
+  await formEl.validate(async (valid) => {
     if (valid) {
       const res = await API.smallLinkPage.addSmallLink(formData)
       if (!res?.data?.success) {

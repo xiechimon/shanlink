@@ -2,7 +2,6 @@ import axios from 'axios'
 import {getToken, getUsername} from '@/core/auth.js'
 import {isNotEmpty} from '@/utils/plugins.js'
 import router from "@/router";
-import { ElMessage } from 'element-plus'
 
 // const router = useRouter()
 // 后端单体应用统一前缀，用户/分组在 /admin/v1，短链业务在 /v1，各模块自带子路径

@@ -64,7 +64,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, nextTick, watch, onBeforeUnmount, getCurrentInstance } from 'vue'
+import { reactive, ref, watch, onBeforeUnmount, getCurrentInstance } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useStore } from 'vuex'
 
@@ -301,7 +301,7 @@ const onSubmit = async (formEl) => {
     submitDisable.value = false
     return
   }
-  await formEl.validate(async (valid, fields) => {
+  await formEl.validate(async (valid) => {
     if (valid) {
       let { describes, originUrls } = formData
       describes = transferStrToArray(describes)

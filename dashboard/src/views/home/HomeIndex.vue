@@ -60,7 +60,6 @@ const { proxy } = getCurrentInstance()
 const API = proxy.$API
 // 当当前路径和菜单不匹配时，菜单不会被选中
 const router = useRouter()
-const squareUrl = ref('https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png')
 const toMine = () => {
   router.push('/home' + '/account')
 }
@@ -94,14 +93,6 @@ onMounted(async () => {
     /* 后端不可用，仅前端展示 cookie 用户名 */
   }
 })
-const extractColorByName = (name) => {
-  var temp = []
-  temp.push('#')
-  for (let index = 0; index < name.length; index++) {
-    temp.push(parseInt(name[index].charCodeAt(0), 10).toString(16))
-  }
-  return temp.slice(0, 5).join('').slice(0, 4)
-}
 
 // 辅助函数，用于截断文本
 const truncateText = (text, maxLength) => {

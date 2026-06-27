@@ -30,11 +30,9 @@ const props = defineProps({
   data: {
     type: Array,
     // 和上面的labels对应
-    default: [10, 0]
+    default: () => [10, 0]
   }
 })
-const data1 = props.data[0]
-const data2 = props.data[1]
 
 const data1Precentage = ref(0)
 const data2Precentage = ref(0)

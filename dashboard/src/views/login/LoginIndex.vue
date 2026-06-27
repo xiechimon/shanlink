@@ -106,7 +106,7 @@
 
 <script setup>
 import { setToken, setUsername, getUsername } from '@/core/auth.js'
-import { ref, reactive, onMounted, onBeforeUnmount, watch, getCurrentInstance } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as THREE from 'three'
@@ -146,7 +146,7 @@ const addFormRule = reactive({
   mail: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     {
-      pattern: /^([a-zA-Z]|[0-9])(\w|\-)+@[a-zA-Z0-9]+\.([a-zA-Z]{2,4})$/,
+      pattern: /^([a-zA-Z]|[0-9])(\w|-)+@[a-zA-Z0-9]+\.([a-zA-Z]{2,4})$/,
       message: '请输入正确的邮箱号',
       trigger: 'blur'
     }
