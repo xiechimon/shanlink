@@ -1,6 +1,7 @@
 package com.xmon.shanlink.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.text.StrBuilder;
 import cn.hutool.core.util.StrUtil;
@@ -140,10 +141,10 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 .eq(LinkDO::getDelTime, 0L)
                 .orderByDesc(LinkDO::getCreateTime);
 
-        IPage<LinkDO> page = page(requestParam, linkDOLambdaQueryWrapper);
+        IPage<LinkDO> linkPage = page(requestParam, linkDOLambdaQueryWrapper);
 
         // 从当前页的链接列表里提取 fullShortUrl 集合
-        List<String> fullShortUrls = page.getRecords()
+        List<String> fullShortUrls = linkPage.getRecords()
                 .stream()
                 .map(LinkDO::getFullShortUrl)
                 .toList();
@@ -151,14 +152,14 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         // 批量查 t_link_stats_today，得到今日 PV/UV/UIP
         List<LinkStatsTodayDO> linkStatsTodayDOList = linkStatsTodayMapper.selectList(Wrappers.lambdaQuery(LinkStatsTodayDO.class)
                 .in(LinkStatsTodayDO::getFullShortUrl, fullShortUrls)
-                .eq(LinkStatsTodayDO::getDate, new Date()));
+                .eq(LinkStatsTodayDO::getDate, DateUtil.formatDate(new Date())));
 
         // 建立 Map { fullShortUrl : LinkStatsTodayDO}
         Map<String, LinkStatsTodayDO> map = linkStatsTodayDOList.stream()
                 .collect(Collectors.toMap(LinkStatsTodayDO::getFullShortUrl, e -> e));
 
         // 遍历当前页，填入今日统计
-        page.getRecords().forEach(linkDO -> {
+        linkPage.getRecords().forEach(linkDO -> {
             LinkStatsTodayDO linkStatsTodayDO = map.get(linkDO.getFullShortUrl());
             linkDO.setTodayPv(Objects.isNull(linkStatsTodayDO) ? 0 : linkStatsTodayDO.getTodayPv());
             linkDO.setTodayUv(Objects.isNull(linkStatsTodayDO) ? 0 : linkStatsTodayDO.getTodayUv());
@@ -166,7 +167,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         });
 
         // 将 LinkDO 转换为 LinkPageRespDTO 并返回分页结果
-        return page.convert(
+        return linkPage.convert(
                 each -> BeanUtil.toBean(each, LinkPageRespDTO.class)
         );
     }
