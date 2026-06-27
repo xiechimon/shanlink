@@ -31,8 +31,10 @@ public class ShortLinkStatsSaveConsumer implements RocketMQListener<LinkStatsRec
     @Override
     public void onMessage(LinkStatsRecordDTO message) {
         String messageId = message.getKeys();
+
         // 幂等校验：判断消息是否已被消费或正在消费
         if (!messageQueueIdempotentHandler.isMessageBeingConsumed(messageId)) {
+
             // 已完成则直接返回，未完成说明仍在处理中，抛异常触发重试
             if (messageQueueIdempotentHandler.isAccomplish(messageId)) {
                 return;

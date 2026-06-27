@@ -3,9 +3,6 @@ package com.xmon.shanlink.service.impl;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.Week;
 import cn.hutool.core.lang.UUID;
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.useragent.UserAgent;
-import cn.hutool.http.useragent.UserAgentUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -20,6 +17,7 @@ import com.xmon.shanlink.dto.resp.LinkStatsAccessRecordRespDTO;
 import com.xmon.shanlink.dto.resp.LinkStatsRespDTO;
 import com.xmon.shanlink.mq.producer.ShortLinkStatsSaveProducer;
 import com.xmon.shanlink.service.LinkStatsService;
+import com.xmon.shanlink.toolkit.LinkUtil;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -62,53 +60,42 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             String dateStr = DateUtil.formatDate(now);
 
             // UV：通过 Cookie 识别唯一访客
-            String uvFlag = UUID.fastUUID().toString();
+            String uvFlag;
             boolean uvFirstTime = true;
             String uvCookieName = "short-link-uv";
+            String uvKey = SHORT_LINK_STATS_UV_KEY + dateStr + ":" + fullShortUrl;
             Cookie[] cookies = request.getCookies();
-            if (cookies != null) {
-                Optional<Cookie> uvCookie = Arrays.stream(cookies)
-                        .filter(c -> uvCookieName.equals(c.getName()))
-                        .findFirst();
-                if (uvCookie.isPresent()) {
-                    uvFlag = uvCookie.get().getValue();
-                    String uvKey = SHORT_LINK_STATS_UV_KEY + dateStr + ":" + fullShortUrl;
-                    Long uvAdded = stringRedisTemplate.opsForSet().add(uvKey, uvFlag);
-                    uvFirstTime = uvAdded != null && uvAdded > 0;
-                    stringRedisTemplate.expire(uvKey, 1, TimeUnit.DAYS);
-                } else {
-                    String uvKey = SHORT_LINK_STATS_UV_KEY + dateStr + ":" + fullShortUrl;
-                    stringRedisTemplate.opsForSet().add(uvKey, uvFlag);
-                    stringRedisTemplate.expire(uvKey, 1, TimeUnit.DAYS);
-                    Cookie cookie = new Cookie(uvCookieName, uvFlag);
-                    cookie.setMaxAge(60 * 60 * 24 * 30);
-                    cookie.setPath("/");
-                    response.addCookie(cookie);
-                }
+            Optional<Cookie> uvCookie = cookies == null ?
+                    Optional.empty()
+                    : Arrays.stream(cookies).filter(c ->
+                    uvCookieName.equals(c.getName())).findFirst();
+            if (uvCookie.isPresent()) {
+                uvFlag = uvCookie.get().getValue();
+                Long uvAdded =
+                        stringRedisTemplate.opsForSet().add(uvKey, uvFlag);
+                uvFirstTime = uvAdded != null && uvAdded > 0;
             } else {
-                String uvKey = SHORT_LINK_STATS_UV_KEY + dateStr + ":" + fullShortUrl;
+                uvFlag = UUID.fastUUID().toString();
                 stringRedisTemplate.opsForSet().add(uvKey, uvFlag);
-                stringRedisTemplate.expire(uvKey, 1, TimeUnit.DAYS);
                 Cookie cookie = new Cookie(uvCookieName, uvFlag);
                 cookie.setMaxAge(60 * 60 * 24 * 30);
                 cookie.setPath("/");
                 response.addCookie(cookie);
             }
+            stringRedisTemplate.expire(uvKey, 1, TimeUnit.DAYS);
 
             // UIP：通过 IP 识别唯一 IP
-            String ip = getClientIp(request);
+            String ip = LinkUtil.getActualIp(request);
             String uipKey = SHORT_LINK_STATS_UIP_KEY + dateStr + ":" + fullShortUrl;
             Long uipAdded = stringRedisTemplate.opsForSet().add(uipKey, ip);
             boolean uipFirstTime = uipAdded != null && uipAdded > 0;
             stringRedisTemplate.expire(uipKey, 1, TimeUnit.DAYS);
 
-            // User-Agent 解析
-            String userAgentStr = request.getHeader("User-Agent");
-            UserAgent userAgent = UserAgentUtil.parse(userAgentStr);
-            String browser = userAgent.getBrowser().getName();
-            String os = userAgent.getOs().getName();
-            String device = userAgent.isMobile() ? "Mobile" : "PC";
-            String network = "Unknown";
+            // 获取浏览器、操作系统、设备类型、网络类型等信息
+            String browser = LinkUtil.getBrowser(request);
+            String os = LinkUtil.getOs(request);
+            String device = LinkUtil.getDevice(request);
+            String network = LinkUtil.getNetwork(request);
 
             // 组装统计消息发送至 MQ，由消费者异步落库
             LinkStatsRecordDTO statsRecord = LinkStatsRecordDTO.builder()
@@ -118,8 +105,8 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                     .uvFirstFlag(uvFirstTime)
                     .uipFirstFlag(uipFirstTime)
                     .remoteAddr(ip)
-                    .browser(StrUtil.isBlank(browser) ? "Unknown" : browser)
-                    .os(StrUtil.isBlank(os) ? "Unknown" : os)
+                    .browser(browser)
+                    .os(os)
                     .device(device)
                     .network(network)
                     .currentDate(now)
@@ -394,17 +381,4 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         return page;
     }
 
-    private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (StrUtil.isBlank(ip) || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (StrUtil.isBlank(ip) || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
-    }
 }
