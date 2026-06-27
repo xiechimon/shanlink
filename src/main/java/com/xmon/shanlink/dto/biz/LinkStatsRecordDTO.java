@@ -23,11 +23,6 @@ public class LinkStatsRecordDTO implements Serializable {
     private String fullShortUrl;
 
     /**
-     * 分组标识
-     */
-    private String gid;
-
-    /**
      * 访客标识（UV Cookie 值）
      */
     private String uvFlag;

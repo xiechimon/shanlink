@@ -52,9 +52,10 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     private final LinkStatsTodayMapper linkStatsTodayMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final ShortLinkStatsSaveProducer shortLinkStatsSaveProducer;
+    private final LinkGotoMapper linkGotoMapper;
 
     @Override
-    public void saveStats(String fullShortUrl, String gid, HttpServletRequest request, HttpServletResponse response) {
+    public void saveStats(String fullShortUrl, HttpServletRequest request, HttpServletResponse response) {
         try {
             Date now = new Date();
             String dateStr = DateUtil.formatDate(now);
@@ -100,7 +101,6 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             // 组装统计消息发送至 MQ，由消费者异步落库
             LinkStatsRecordDTO statsRecord = LinkStatsRecordDTO.builder()
                     .fullShortUrl(fullShortUrl)
-                    .gid(gid)
                     .uvFlag(uvFlag)
                     .uvFirstFlag(uvFirstTime)
                     .uipFirstFlag(uipFirstTime)
@@ -202,6 +202,26 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .device(requestParam.getDevice())
                 .locale("China")
                 .build());
+
+        // 通过路由表拿 gid
+        LinkGotoDO linkGotoDO = linkGotoMapper.selectOne(Wrappers.lambdaQuery(LinkGotoDO.class)
+                .eq(LinkGotoDO::getFullShortUrl, fullShortUrl));
+        if (linkGotoDO == null) {
+            log.error("短链接路由信息不存在，fullShortUrl: {}", fullShortUrl);
+            return;
+        }
+
+        // 更新短链接总访问量（PV/UV/UIP）
+        linkMapper.update(Wrappers.lambdaUpdate(LinkDO.class)
+                .setSql("total_pv = total_pv + 1")
+                .setSql(uvFirstTime, "total_uv = total_uv + 1")
+                .setSql(uipFirstTime, "total_uip = total_uip + 1")
+                .eq(LinkDO::getGid, linkGotoDO.getGid())
+                .eq(LinkDO::getFullShortUrl, requestParam.getFullShortUrl())
+                .eq(LinkDO::getEnableStatus, 0)
+                .eq(LinkDO::getDelTime, 0L)
+                .eq(LinkDO::getDelFlag, 0)
+        );
     }
 
     @Override

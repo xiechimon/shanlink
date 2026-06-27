@@ -20,11 +20,10 @@ public interface LinkStatsService {
      * 记录短链接访问统计
      *
      * @param fullShortUrl 完整短链接
-     * @param gid          分组标识
      * @param request      HTTP 请求
      * @param response     HTTP 响应
      */
-    void saveStats(String fullShortUrl, String gid, HttpServletRequest request, HttpServletResponse response);
+    void saveStats(String fullShortUrl, HttpServletRequest request, HttpServletResponse response);
 
     /**
      * 实际保存短链接访问统计（消费者异步调用）

@@ -281,7 +281,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         // 1. 正向缓存命中直接跳转，热点链接走这里
         String originalLink = stringRedisTemplate.opsForValue().get(gotoShortLinkKey);
         if (StringUtils.isNotBlank(originalLink)) {
-            linkStatsService.saveStats(fullShortUrl, null, request, response);
+            linkStatsService.saveStats(fullShortUrl, request, response);
             response.sendRedirect(originalLink);
             return;
         }
@@ -306,7 +306,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             // 双重检查，避免多个线程重复回源
             originalLink = stringRedisTemplate.opsForValue().get(gotoShortLinkKey);
             if (StringUtils.isNotBlank(originalLink)) {
-                linkStatsService.saveStats(fullShortUrl, null, request, response);
+                linkStatsService.saveStats(fullShortUrl, request, response);
                 response.sendRedirect(originalLink);
                 return;
             }
@@ -344,7 +344,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                     linkDO.getOriginUrl(),
                     LinkUtil.getLinkCacheValidTime(linkDO.getValidDate()), TimeUnit.MILLISECONDS
             );
-            linkStatsService.saveStats(fullShortUrl, linkGotoDO.getGid(), request, response);
+            linkStatsService.saveStats(fullShortUrl, request, response);
             response.sendRedirect(linkDO.getOriginUrl());
         } finally {
             lock.unlock();
