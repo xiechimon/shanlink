@@ -78,7 +78,7 @@
                   <div class="top-item" v-for="(item, index) in chinaMapData" :key="item.name">
                     <div v-if="index <= 9" class="key-value">
                       <span>{{ index + 1 + '. ' + item.name }}</span>
-                      <span>{{ (item.ratio * 100).toFixed(2) }}%</span>
+                      <span>{{ item.ratio ? (item.ratio * 100).toFixed(2) : '0.00' }}%</span>
                       <span>{{ item.value }}次</span>
                     </div>
                   </div>

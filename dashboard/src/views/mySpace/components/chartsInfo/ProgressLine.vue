@@ -6,7 +6,7 @@
         <div class="flex-item">
           <div>
             <img :src="getUrl(item?.browser, item?.os)" width="25" alt="" />
-            <span>{{ item?.browser || item?.os }} {{ (item?.ratio * 100).toFixed(2) }}%</span>
+            <span>{{ item?.browser || item?.os }} {{ getPercent(item?.cnt) }}%</span>
           </div>
           <div>
             <span>{{ item?.cnt }} 次</span>
@@ -18,7 +18,7 @@
             :text-inside="true"
             :show-text="false"
             :stroke-width="12"
-            :percentage="(item?.ratio * 100).toFixed(2)"
+            :percentage="getPercent(item?.cnt)"
           />
         </div>
       </div>
@@ -41,7 +41,9 @@ import linux from '@/assets/png/linux.png'
 import opera from '@/assets/png/opera.png'
 import IE from '@/assets/png/IE.png'
 
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   dataLists: {
     type: Array
     // eslint-disable-next-line vue/require-valid-default-prop
@@ -61,6 +63,12 @@ defineProps({
     // ]
   }
 })
+const totalCnt = computed(() =>
+  (props.dataLists || []).reduce((sum, item) => sum + (item?.cnt || 0), 0)
+)
+const getPercent = (cnt) =>
+  totalCnt.value ? ((cnt / totalCnt.value) * 100).toFixed(2) : '0'
+
 const getUrl = (img1, img2) => {
   if (img1) {
     img1 = img1.toLowerCase()
