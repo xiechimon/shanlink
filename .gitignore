@@ -39,3 +39,6 @@ build/
 
 ### Personal scratch ###
 src/test/java/Scratch.java
+
+### Secrets ###
+.env
