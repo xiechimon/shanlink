@@ -13,47 +13,43 @@ import com.xmon.shanlink.common.convention.exception.ClientException;
 import com.xmon.shanlink.common.convention.exception.ServiceException;
 import com.xmon.shanlink.common.enums.LinkErrorCodeEnum;
 import com.xmon.shanlink.common.enums.VailDateTypeEnum;
-import com.xmon.shanlink.dao.entity.LinkGotoDO;
-import com.xmon.shanlink.dao.mapper.LinkGotoMapper;
-import com.xmon.shanlink.dto.resp.*;
-import com.xmon.shanlink.toolkit.LinkUtil;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.transaction.annotation.Transactional;
-
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.Date;
-import java.util.Objects;
-
 import com.xmon.shanlink.dao.entity.LinkDO;
+import com.xmon.shanlink.dao.entity.LinkGotoDO;
+import com.xmon.shanlink.dao.entity.LinkStatsTodayDO;
+import com.xmon.shanlink.dao.mapper.LinkGotoMapper;
 import com.xmon.shanlink.dao.mapper.LinkMapper;
+import com.xmon.shanlink.dao.mapper.LinkStatsTodayMapper;
 import com.xmon.shanlink.dto.req.LinkBatchCreateReqDTO;
 import com.xmon.shanlink.dto.req.LinkCreateReqDTO;
 import com.xmon.shanlink.dto.req.LinkPageReqDTO;
 import com.xmon.shanlink.dto.req.LinkUpdateReqDTO;
+import com.xmon.shanlink.dto.resp.*;
 import com.xmon.shanlink.service.LinkService;
 import com.xmon.shanlink.service.LinkStatsService;
 import com.xmon.shanlink.toolkit.HashUtil;
+import com.xmon.shanlink.toolkit.LinkUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.redisson.api.RBloomFilter;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.xmon.shanlink.common.constant.RedisCacheConstant.*;
 
@@ -71,6 +67,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     private final StringRedisTemplate stringRedisTemplate;
     private final RedissonClient redissonClient;
     private final LinkStatsService linkStatsService;
+    private final LinkStatsTodayMapper linkStatsTodayMapper;
 
     @Value("${shan-link.domain.default}")
     private String createShortLinkDefaultDomain;
@@ -135,21 +132,43 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
 
     @Override
     public IPage<LinkPageRespDTO> pageLink(LinkPageReqDTO requestParam) {
-        LambdaQueryWrapper<LinkDO> queryWrapper = Wrappers.lambdaQuery(LinkDO.class)
-                .eq(LinkDO::getGid, requestParam.getGid())
+        // 分页查询 t_link 表，拿到当前页
+        LambdaQueryWrapper<LinkDO> linkDOLambdaQueryWrapper = Wrappers.lambdaQuery(LinkDO.class)
+                .eq(Objects.nonNull(requestParam.getGid()), LinkDO::getGid, requestParam.getGid())
                 .eq(LinkDO::getEnableStatus, 0)
                 .eq(LinkDO::getDelFlag, 0)
                 .eq(LinkDO::getDelTime, 0L)
                 .orderByDesc(LinkDO::getCreateTime);
 
-        IPage<LinkDO> page = page(requestParam, queryWrapper);
-        return page.convert(each -> {
-            LinkPageRespDTO dto = BeanUtil.toBean(each, LinkPageRespDTO.class);
-            dto.setTodayPv(0);
-            dto.setTodayUv(0);
-            dto.setTodayUip(0);
-            return dto;
+        IPage<LinkDO> page = page(requestParam, linkDOLambdaQueryWrapper);
+
+        // 从当前页的链接列表里提取 fullShortUrl 集合
+        List<String> fullShortUrls = page.getRecords()
+                .stream()
+                .map(LinkDO::getFullShortUrl)
+                .toList();
+
+        // 批量查 t_link_stats_today，得到今日 PV/UV/UIP
+        List<LinkStatsTodayDO> linkStatsTodayDOList = linkStatsTodayMapper.selectList(Wrappers.lambdaQuery(LinkStatsTodayDO.class)
+                .in(LinkStatsTodayDO::getFullShortUrl, fullShortUrls)
+                .eq(LinkStatsTodayDO::getDate, new Date()));
+
+        // 建立 Map { fullShortUrl : LinkStatsTodayDO}
+        Map<String, LinkStatsTodayDO> map = linkStatsTodayDOList.stream()
+                .collect(Collectors.toMap(LinkStatsTodayDO::getFullShortUrl, e -> e));
+
+        // 遍历当前页，填入今日统计
+        page.getRecords().forEach(linkDO -> {
+            LinkStatsTodayDO linkStatsTodayDO = map.get(linkDO.getFullShortUrl());
+            linkDO.setTodayPv(Objects.isNull(linkStatsTodayDO) ? 0 : linkStatsTodayDO.getTodayPv());
+            linkDO.setTodayUv(Objects.isNull(linkStatsTodayDO) ? 0 : linkStatsTodayDO.getTodayUv());
+            linkDO.setTodayUip(Objects.isNull(linkStatsTodayDO) ? 0 : linkStatsTodayDO.getTodayUip());
         });
+
+        // 将 LinkDO 转换为 LinkPageRespDTO 并返回分页结果
+        return page.convert(
+                each -> BeanUtil.toBean(each, LinkPageRespDTO.class)
+        );
     }
 
     @Override
