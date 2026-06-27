@@ -94,7 +94,9 @@
                   </el-icon>
                 </div>
                 <template #dropdown>
-                  <el-dropdown-item @click="pageParams.orderTag = null, orderIndex = 0">创建时间</el-dropdown-item>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="pageParams.orderTag = null, orderIndex = 0">创建时间</el-dropdown-item>
+                  </el-dropdown-menu>
                 </template>
               </el-dropdown>
             </template>
@@ -156,8 +158,10 @@
                   </el-icon>
                 </div>
                 <template #dropdown>
-                  <el-dropdown-item @click="pageParams.orderTag = 'todayPv', orderIndex = 1">今日访问次数</el-dropdown-item>
-                  <el-dropdown-item @click="pageParams.orderTag = 'totalPv', orderIndex = 1">累计访问次数</el-dropdown-item>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="pageParams.orderTag = 'todayPv', orderIndex = 1">今日访问次数</el-dropdown-item>
+                    <el-dropdown-item @click="pageParams.orderTag = 'totalPv', orderIndex = 1">累计访问次数</el-dropdown-item>
+                  </el-dropdown-menu>
                 </template>
               </el-dropdown>
             </template>
@@ -184,8 +188,10 @@
                   </el-icon>
                 </div>
                 <template #dropdown>
-                  <el-dropdown-item @click="pageParams.orderTag = 'todayUv', orderIndex = 2">今日访问人数</el-dropdown-item>
-                  <el-dropdown-item @click="pageParams.orderTag = 'totalUv', orderIndex = 2">累计访问人数</el-dropdown-item>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="pageParams.orderTag = 'todayUv', orderIndex = 2">今日访问人数</el-dropdown-item>
+                    <el-dropdown-item @click="pageParams.orderTag = 'totalUv', orderIndex = 2">累计访问人数</el-dropdown-item>
+                  </el-dropdown-menu>
                 </template>
               </el-dropdown>
             </template>
@@ -212,8 +218,10 @@
                   </el-icon>
                 </div>
                 <template #dropdown>
-                  <el-dropdown-item @click="pageParams.orderTag = 'todayUip', orderIndex = 3">今日IP数</el-dropdown-item>
-                  <el-dropdown-item @click="pageParams.orderTag = 'totalUip', orderIndex = 3">累计IP数</el-dropdown-item>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="pageParams.orderTag = 'todayUip', orderIndex = 3">今日IP数</el-dropdown-item>
+                    <el-dropdown-item @click="pageParams.orderTag = 'totalUip', orderIndex = 3">累计IP数</el-dropdown-item>
+                  </el-dropdown-menu>
                 </template>
               </el-dropdown>
             </template>
