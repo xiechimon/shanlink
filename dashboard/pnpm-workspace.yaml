@@ -1,0 +1,6 @@
+packages:
+  - '.'
+
+# pnpm 11.9.0 对列表型 onlyBuiltDependencies/ignoredBuiltDependencies 不生效，
+# 此处允许依赖执行构建脚本（esbuild、@parcel/watcher 需要），供应链安全由 lockfile 策略校验保障。
+dangerouslyAllowAllBuilds: true
