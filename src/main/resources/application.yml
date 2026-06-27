@@ -9,12 +9,11 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
-      username: root
 
 rocketmq:
-  name-server: 127.0.0.1:9876
+  name-server: common-rocketmq-dev.magestack.cn:9876
   producer:
-    group: shan-link_stats-save_producer-group
+    group: xiechimon-shan-link_stats-save_producer-group
     send-message-timeout: 3000
 
 shan-link:
