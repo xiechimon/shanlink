@@ -1,0 +1,64 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: shanlink-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      MYSQL_DATABASE: shanlink
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - shanlink
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: shanlink-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis_data:/data
+    networks:
+      - shanlink
+
+  backend:
+    image: ghcr.io/xiechimon/shanlink-backend:latest
+    container_name: shanlink-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      DOMAIN: ${DOMAIN:?DOMAIN is required}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - shanlink
+
+  frontend:
+    image: ghcr.io/xiechimon/shanlink-frontend:latest
+    container_name: shanlink-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - shanlink
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  shanlink:
+    driver: bridge
