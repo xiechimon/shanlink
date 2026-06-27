@@ -58,6 +58,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd /opt/shanlink
+            git pull
             docker compose -f docker/docker-compose.prod.yml pull
             docker compose -f docker/docker-compose.prod.yml up -d
             docker image prune -f
