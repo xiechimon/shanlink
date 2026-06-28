@@ -3,6 +3,7 @@ package com.xmon.shanlink.service.impl;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.Week;
 import cn.hutool.core.lang.UUID;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -23,6 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -41,6 +43,12 @@ import static com.xmon.shanlink.common.constant.RedisCacheConstant.SHORT_LINK_ST
 @RequiredArgsConstructor
 public class LinkStatsServiceImpl implements LinkStatsService {
 
+    private static final String UNKNOWN_PROVINCE = "未知";
+    private static final String UNKNOWN_CITY = "未知";
+    private static final String DEFAULT_ADCODE = "0";
+    private static final String DEFAULT_COUNTRY = "China";
+    private static final String LOCALE_STATS_CACHE_KEY = "shan-link:stats:locale:ip:%s";
+
     private final LinkMapper linkMapper;
     private final LinkAccessStatsMapper linkAccessStatsMapper;
     private final LinkBrowserStatsMapper linkBrowserStatsMapper;
@@ -53,6 +61,12 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     private final StringRedisTemplate stringRedisTemplate;
     private final ShortLinkStatsSaveProducer shortLinkStatsSaveProducer;
     private final LinkGotoMapper linkGotoMapper;
+
+    @Value("${shanlink.stats.default-province:}")
+    private String defaultProvince;
+
+    @Value("${shanlink.stats.default-city:}")
+    private String defaultCity;
 
     @Override
     public void saveStats(String fullShortUrl, HttpServletRequest request, HttpServletResponse response) {
@@ -180,14 +194,15 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .cnt(1)
                 .build());
 
-        // 记录地区统计（简化：不做 IP 地理解析）
+        // 记录地区统计
+        Map<String, String> localeInfo = resolveLocaleByIp(requestParam.getRemoteAddr());
         linkLocaleStatsMapper.shortLinkLocaleState(LinkLocaleStatsDO.builder()
                 .fullShortUrl(fullShortUrl)
                 .date(now)
-                .province("未知")
-                .city("未知")
-                .adcode("0")
-                .country("China")
+                .province(localeInfo.getOrDefault("province", UNKNOWN_PROVINCE))
+                .city(localeInfo.getOrDefault("city", UNKNOWN_CITY))
+                .adcode(localeInfo.getOrDefault("adcode", DEFAULT_ADCODE))
+                .country(localeInfo.getOrDefault("country", DEFAULT_COUNTRY))
                 .cnt(1)
                 .build());
 
@@ -200,7 +215,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .os(requestParam.getOs())
                 .network(requestParam.getNetwork())
                 .device(requestParam.getDevice())
-                .locale("China")
+                .locale(localeInfo.getOrDefault("province", UNKNOWN_PROVINCE))
                 .build());
 
         // 通过路由表拿 gid
@@ -222,6 +237,70 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .eq(LinkDO::getDelTime, 0L)
                 .eq(LinkDO::getDelFlag, 0)
         );
+    }
+
+    private Map<String, String> resolveLocaleByIp(String ip) {
+        Map<String, String> defaultLocale = buildDefaultLocale();
+        if (isPrivateIp(ip)) {
+            if (StrUtil.isNotBlank(defaultProvince)) {
+                defaultLocale.put("province", defaultProvince);
+            }
+            if (StrUtil.isNotBlank(defaultCity)) {
+                defaultLocale.put("city", defaultCity);
+            }
+            return defaultLocale;
+        }
+        String cacheKey = String.format(LOCALE_STATS_CACHE_KEY, ip);
+        String cachedLocale = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (StrUtil.isNotBlank(cachedLocale)) {
+            String[] parts = cachedLocale.split("\\|");
+            if (parts.length >= 2) {
+                defaultLocale.put("province", parts[0]);
+                defaultLocale.put("city", parts[1]);
+                return defaultLocale;
+            }
+        }
+        // 使用 ip2region 离线库，格式：国家|区域|省份|城市|ISP
+        String[] region = LinkUtil.getIpRegion(ip);
+        String province = region.length > 2 ? region[2] : UNKNOWN_PROVINCE;
+        String city = region.length > 3 ? region[3] : UNKNOWN_CITY;
+        if (StrUtil.isBlank(province) || "0".equals(province)) province = UNKNOWN_PROVINCE;
+        if (StrUtil.isBlank(city) || "0".equals(city)) city = UNKNOWN_CITY;
+        defaultLocale.put("province", province);
+        defaultLocale.put("city", city);
+        stringRedisTemplate.opsForValue().set(cacheKey, province + "|" + city, 1, TimeUnit.DAYS);
+        return defaultLocale;
+    }
+
+    private boolean isPrivateIp(String ip) {
+        if (StrUtil.isBlank(ip) || "127.0.0.1".equals(ip) || "::1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip)) {
+            return true;
+        }
+        if (ip.startsWith("10.") || ip.startsWith("192.168.")) {
+            return true;
+        }
+        if (!ip.startsWith("172.")) {
+            return false;
+        }
+        String[] segments = ip.split("\\.");
+        if (segments.length < 2) {
+            return false;
+        }
+        try {
+            int secondSegment = Integer.parseInt(segments[1]);
+            return secondSegment >= 16 && secondSegment <= 31;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+    }
+
+    private Map<String, String> buildDefaultLocale() {
+        Map<String, String> defaultLocale = new HashMap<>();
+        defaultLocale.put("province", UNKNOWN_PROVINCE);
+        defaultLocale.put("city", UNKNOWN_CITY);
+        defaultLocale.put("adcode", DEFAULT_ADCODE);
+        defaultLocale.put("country", DEFAULT_COUNTRY);
+        return defaultLocale;
     }
 
     @Override
@@ -309,6 +388,8 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                                 .cnt(((Number) m.get("count")).intValue())
                                 .build())
                         .collect(Collectors.toList());
+        List<LinkStatsRespDTO.LinkStatsUvTypeRespDTO> uvTypeStats =
+                linkAccessLogsMapper.listUvTypeStatsByShortLink(fullShortUrl, startDate, endDate);
 
         return LinkStatsRespDTO.builder()
                 .pv(totalPv)

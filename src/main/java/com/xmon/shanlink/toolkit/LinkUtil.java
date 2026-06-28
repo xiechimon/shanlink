@@ -4,6 +4,9 @@ import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import org.lionsoul.ip2region.xdb.Searcher;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.StreamUtils;
 
 import java.net.URI;
 import java.util.Date;
@@ -130,6 +133,24 @@ public class LinkUtil {
         // 这里简单判断IP地址范围，您可能需要更复杂的逻辑
         // 例如，通过调用IP地址库或调用第三方服务来判断网络类型
         return actualIp.startsWith("192.168.") || actualIp.startsWith("10.") ? "WIFI" : "Mobile";
+    }
+
+    /**
+     * 根据 IP 查询归属地，返回 [国家, 区域, 省份, 城市, ISP] 数组
+     *
+     * @param ip 用户真实IP
+     * @return 归属地数组，查询失败返回全"未知"
+     */
+    public static String[] getIpRegion(String ip) {
+        try {
+            ClassPathResource resource = new ClassPathResource("ip2region.xdb");
+            byte[] dbBytes = StreamUtils.copyToByteArray(resource.getInputStream());
+            Searcher searcher = Searcher.newWithBuffer(dbBytes);
+            String region = searcher.search(ip);
+            return region.split("\\|");
+        } catch (Exception ignored) {
+            return new String[]{"未知", "0", "未知", "未知", "未知"};
+        }
     }
 
     /**

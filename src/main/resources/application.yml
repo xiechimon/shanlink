@@ -11,7 +11,7 @@ spring:
       port: 6379
 
 rocketmq:
-  name-server: common-rocketmq-dev.magestack.cn:9876
+  name-server: ${ROCKETMQ_NAME_SERVER:127.0.0.1:9876}
   producer:
     group: xiechimon-shan-link_stats-save_producer-group
     send-message-timeout: 3000
@@ -21,3 +21,8 @@ shan-link:
     default: 127.0.0.1:8000
   group:
     max-num: 20
+
+shanlink:
+  stats:
+    default-province: "北京"
+    default-city: "北京"

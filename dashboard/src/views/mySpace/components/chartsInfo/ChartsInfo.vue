@@ -78,7 +78,7 @@
                   <div class="top-item" v-for="(item, index) in chinaMapData" :key="item.name">
                     <div v-if="index <= 9" class="key-value">
                       <span>{{ index + 1 + '. ' + item.name }}</span>
-                      <span>{{ item.ratio ? (item.ratio * 100).toFixed(2) : '0.00' }}%</span>
+                      <span>{{ item.ratio }}%</span>
                       <span>{{ item.value }}次</span>
                     </div>
                   </div>
@@ -428,13 +428,13 @@ const chinaTotalNum = ref(0)
 watch(
   () => props.info?.localeCnStats,
   () => {
-    chinaTotalNum.value = 0
-    chinaMapData.value = props.info?.localeCnStats.map((item) => {
-      let { cnt, locale, ratio } = item
-      locale = locale.replace('省', '')
-      locale = locale.replace('市', '')
-      chinaTotalNum.value += cnt
-      return { name: locale, value: cnt, ratio }
+    const localeStats = props.info?.localeCnStats || []
+    chinaTotalNum.value = localeStats.reduce((sum, item) => sum + (item?.cnt || 0), 0)
+    chinaMapData.value = localeStats.map((item) => {
+      let { cnt, locale } = item
+      locale = (locale || '未知').replace('省', '').replace('市', '')
+      const ratio = chinaTotalNum.value ? (((cnt || 0) / chinaTotalNum.value) * 100).toFixed(2) : '0.00'
+      return { name: locale, value: cnt || 0, ratio }
     })
     initChinaMap()
   },
@@ -893,7 +893,7 @@ watch(
     netWorkList.value = [0, 0]
     // 对访问设备类型的数据进行转化
     props.info?.networkStats?.forEach((item) => {
-      if (item.device === 'Mobile') {
+      if (item.network === 'Mobile') {
         netWorkList.value[1] = item.cnt
       } else {
         netWorkList.value[0] = item.cnt

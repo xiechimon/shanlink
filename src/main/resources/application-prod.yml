@@ -8,7 +8,7 @@ spring:
       password: ${REDIS_PASSWORD}
 
 rocketmq:
-  name-server: common-rocketmq-dev.magestack.cn:9876
+  name-server: ${ROCKETMQ_NAME_SERVER:common-rocketmq-dev.magestack.cn:9876}
 
 shan-link:
   domain:
