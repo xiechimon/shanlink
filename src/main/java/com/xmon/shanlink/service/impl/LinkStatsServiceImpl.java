@@ -407,6 +407,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .networkStats(networkStats)
                 .localeCnStats(localeStats)
                 .topIpStats(topIpStats)
+                .uvTypeStats(uvTypeStats)
                 .build();
     }
 

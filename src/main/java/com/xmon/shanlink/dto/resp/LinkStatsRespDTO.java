@@ -91,6 +91,11 @@ public class LinkStatsRespDTO {
      */
     private List<LinkStatsTopIpRespDTO> topIpStats;
 
+    /**
+     * 访客类型统计
+     */
+    private List<LinkStatsUvTypeRespDTO> uvTypeStats;
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -202,5 +207,21 @@ public class LinkStatsRespDTO {
          * IP
          */
         private String ip;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LinkStatsUvTypeRespDTO {
+        /**
+         * 访客类型：newUser 新访客，oldUser 旧访客
+         */
+        private String uvType;
+
+        /**
+         * 访客数
+         */
+        private Integer cnt;
     }
 }

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.xmon.shanlink.dao.entity.LinkAccessLogsDO;
 import com.xmon.shanlink.dto.req.LinkStatsAccessRecordReqDTO;
 import com.xmon.shanlink.dto.resp.LinkStatsAccessRecordRespDTO;
+import com.xmon.shanlink.dto.resp.LinkStatsRespDTO;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -74,4 +75,16 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
     List<Map<String, Object>> listTopIpByShortLink(@Param("fullShortUrl") String fullShortUrl,
                                                    @Param("startDate") String startDate,
                                                    @Param("endDate") String endDate);
+
+    /**
+     * 查询指定日期范围内新老访客统计
+     *
+     * @param fullShortUrl 完整短链接
+     * @param startDate    开始日期
+     * @param endDate      结束日期
+     * @return 新老访客统计
+     */
+    List<LinkStatsRespDTO.LinkStatsUvTypeRespDTO> listUvTypeStatsByShortLink(@Param("fullShortUrl") String fullShortUrl,
+                                                                             @Param("startDate") String startDate,
+                                                                             @Param("endDate") String endDate);
 }
