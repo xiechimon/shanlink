@@ -7,7 +7,7 @@ dataSources:
     password: root
     connectionTimeoutMilliseconds: 20000
     idleTimeoutMilliseconds: 300000
-    maxPoolSize: 5
+    maxPoolSize: 20
     minPoolSize: 5
 
 rules:
