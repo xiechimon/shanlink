@@ -19,6 +19,18 @@ import static com.xmon.shanlink.common.constant.ShortLinkConstant.DEFAULT_CACHE_
  */
 public class LinkUtil {
 
+    private static final Searcher IP_SEARCHER;
+
+    static {
+        try {
+            ClassPathResource resource = new ClassPathResource("ip2region.xdb");
+            byte[] dbBytes = StreamUtils.copyToByteArray(resource.getInputStream());
+            IP_SEARCHER = Searcher.newWithBuffer(dbBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize IP searcher", e);
+        }
+    }
+
     /**
      * 获取短链接缓存有效期时间
      *
@@ -156,10 +168,7 @@ public class LinkUtil {
             return new String[]{"未知", "0", "未知", "未知", "未知"};
         }
         try {
-            ClassPathResource resource = new ClassPathResource("ip2region.xdb");
-            byte[] dbBytes = StreamUtils.copyToByteArray(resource.getInputStream());
-            Searcher searcher = Searcher.newWithBuffer(dbBytes);
-            String region = searcher.search(ip);
+            String region = IP_SEARCHER.search(ip);
             return region.split("\\|");
         } catch (Exception ignored) {
             return new String[]{"未知", "0", "未知", "未知", "未知"};
