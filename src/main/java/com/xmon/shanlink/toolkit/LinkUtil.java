@@ -68,6 +68,9 @@ public class LinkUtil {
      */
     public static String getOs(HttpServletRequest request) {
         String userAgent = request.getHeader("User-Agent");
+        if (userAgent == null) {
+            return "Unknown";
+        }
         if (userAgent.toLowerCase().contains("windows")) {
             return "Windows";
         } else if (userAgent.toLowerCase().contains("mac")) {
@@ -91,6 +94,9 @@ public class LinkUtil {
      */
     public static String getBrowser(HttpServletRequest request) {
         String userAgent = request.getHeader("User-Agent");
+        if (userAgent == null) {
+            return "Unknown";
+        }
         if (userAgent.toLowerCase().contains("edg")) {
             return "Microsoft Edge";
         } else if (userAgent.toLowerCase().contains("chrome")) {
@@ -116,6 +122,9 @@ public class LinkUtil {
      */
     public static String getDevice(HttpServletRequest request) {
         String userAgent = request.getHeader("User-Agent");
+        if (userAgent == null) {
+            return "PC";
+        }
         if (userAgent.toLowerCase().contains("mobile")) {
             return "Mobile";
         }
@@ -130,8 +139,9 @@ public class LinkUtil {
      */
     public static String getNetwork(HttpServletRequest request) {
         String actualIp = getActualIp(request);
-        // 这里简单判断IP地址范围，您可能需要更复杂的逻辑
-        // 例如，通过调用IP地址库或调用第三方服务来判断网络类型
+        if (actualIp == null) {
+            return "Mobile";
+        }
         return actualIp.startsWith("192.168.") || actualIp.startsWith("10.") ? "WIFI" : "Mobile";
     }
 
@@ -142,6 +152,9 @@ public class LinkUtil {
      * @return 归属地数组，查询失败返回全"未知"
      */
     public static String[] getIpRegion(String ip) {
+        if (ip == null || ip.isEmpty()) {
+            return new String[]{"未知", "0", "未知", "未知", "未知"};
+        }
         try {
             ClassPathResource resource = new ClassPathResource("ip2region.xdb");
             byte[] dbBytes = StreamUtils.copyToByteArray(resource.getInputStream());
